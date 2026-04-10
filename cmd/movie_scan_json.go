@@ -1,4 +1,12 @@
 // movie_scan_json.go — JSON metadata file generation during scan
+//
+// -- Shared helper exported from this file --
+//
+//	writeScanJSON(basePath, media)  — write per-item JSON metadata to data/json/<slug>/
+//
+// Consumers: movie_scan.go (called after each successful scan+metadata fetch)
+//
+// Do NOT duplicate JSON metadata writing elsewhere — use writeScanJSON.
 package cmd
 
 import (
