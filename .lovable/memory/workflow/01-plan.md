@@ -92,7 +92,9 @@
 - [x] Batch move (`--all` flag for `movie move`) ✅ 09-Apr-2026
 - [x] JSON metadata files per movie/TV show on scan ✅ 09-Apr-2026
 - [x] Use `DiscoverByGenre` in `movie suggest` ✅ 09-Apr-2026
-- [ ] CI pipeline (lint, test, vuln scan) — follow gitmap-v2 pattern
+- [x] CI pipeline (lint, test, vuln scan) ✅ 10-Apr-2026 — ci.yml + vulncheck.yml + spec/12-ci-cd-pipeline/
+- [x] CI/CD pipeline spec documentation ✅ 10-Apr-2026 — spec/12-ci-cd-pipeline/ (3 docs)
+- [x] Self-update/release spec documentation ✅ 10-Apr-2026 — spec/13-self-update-app-update/ (6 docs)
 
 ---
 
@@ -100,9 +102,9 @@
 
 Pick one of these to implement next:
 
-1. **Undo confirmation prompt** — Add `[y/N]` prompt before reverting. Affects `cmd/movie_undo.go`.
-2. **Movie ls filter clarification** — Document that only file-backed items show.
-3. **CI pipeline** — Add `.github/workflows/ci.yml` with lint, test, vuln scan.
-4. **Batch move** — Add `--all` flag to `movie move`.
+1. **Acceptance criteria** (S06) — Add GIVEN/WHEN/THEN to spec for all commands
+2. **Shared helper docs** (S07) — Add code comments marking shared helpers
+3. **File size stats** (S10) — Add size info to `movie stats`
+4. **README update** (S12) — Document all features in README.md
 
 *Tell me which task to implement.*
