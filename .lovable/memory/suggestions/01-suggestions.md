@@ -25,6 +25,7 @@
 | S16 | CI pipeline (lint, test, vuln scan) | 10-Apr-2026 | ci.yml + vulncheck.yml + spec/12-ci-cd-pipeline/ |
 | S06 | Add GIVEN/WHEN/THEN acceptance criteria | 10-Apr-2026 | 16 ACs covering all commands + export + batch move |
 | S07 | Document shared helper locations | 10-Apr-2026 | Annotated movie_info.go, movie_resolve.go, movie_move_helpers.go, movie_scan_json.go |
+| S12 | Update README.md with full docs | 10-Apr-2026 | 620+ lines, all commands, install, build, project structure |
 
 ---
 
