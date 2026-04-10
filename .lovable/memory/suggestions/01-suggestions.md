@@ -24,6 +24,7 @@
 | S05 | Add confirmation prompt to `movie undo` | 10-Apr-2026 | Already implemented with `[y/N]` prompt |
 | S16 | CI pipeline (lint, test, vuln scan) | 10-Apr-2026 | ci.yml + vulncheck.yml + spec/12-ci-cd-pipeline/ |
 | S06 | Add GIVEN/WHEN/THEN acceptance criteria | 10-Apr-2026 | 16 ACs covering all commands + export + batch move |
+| S07 | Document shared helper locations | 10-Apr-2026 | Annotated movie_info.go, movie_resolve.go, movie_move_helpers.go, movie_scan_json.go |
 
 ---
 
@@ -31,11 +32,7 @@
 
 ### P0 — All Complete ✅
 
-### P1 — High Priority
-
-| # | Suggestion | Affected | Rationale |
-|---|-----------|----------|-----------|
-| S07 | Document shared helper locations in code comments | `cmd/movie_info.go`, `cmd/movie_resolve.go` | Prevent duplicate code creation by AI |
+### P1 — All Complete ✅
 
 ### P2 — Medium Priority
 
