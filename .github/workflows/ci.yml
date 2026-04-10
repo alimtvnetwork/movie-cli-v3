@@ -130,7 +130,7 @@ jobs:
   vulncheck:
     name: Vulnerability Scan
     runs-on: ubuntu-latest
-    needs: sha-check
+    needs: [sha-check, clear-logs]
     steps:
       - name: Already validated
         if: needs.sha-check.outputs.already-built == 'true'
