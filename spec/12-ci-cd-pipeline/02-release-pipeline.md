@@ -64,7 +64,9 @@ Windows binaries include an embedded application icon (`assets/icon.ico`). The p
 
 ```bash
 go install github.com/tc-hib/go-winres@v0.3.3
-go-winres init --icon assets/icon.ico
+go-winres init
+cp assets/icon.ico winres/icon.ico
+go-winres make
 ```
 
 This runs once before the build loop. The `.syso` file is automatically linked by `go build` for Windows targets. Non-Windows binaries are unaffected.
