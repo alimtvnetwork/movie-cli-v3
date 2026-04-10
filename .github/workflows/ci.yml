@@ -362,7 +362,15 @@ jobs:
         if: needs.sha-check.outputs.already-built != 'true' && matrix.os == 'windows'
         run: |
           go install github.com/tc-hib/go-winres@v0.3.3
-          go-winres init --icon assets/icon.ico
+          go-winres init
+          if [ -f "assets/icon.ico" ]; then
+            cp assets/icon.ico winres/icon.ico
+            cp assets/icon.ico winres/icon16.ico
+          elif [ -f "assets/icon.png" ]; then
+            cp assets/icon.png winres/icon.png
+            cp assets/icon.png winres/icon16.png
+          fi
+          go-winres make
 
       - name: Build binary
         id: build-binary

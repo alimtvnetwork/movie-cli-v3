@@ -91,7 +91,12 @@ if ($IsWindows_) {
             }
         }
         if (Test-Path $winresBin) {
-            & $winresBin init --icon $iconPath 2>$null
+            & $winresBin init 2>$null
+            if (Test-Path $iconPath) {
+                Copy-Item $iconPath -Destination "winres/icon.ico" -Force
+                Copy-Item $iconPath -Destination "winres/icon16.ico" -Force
+            }
+            & $winresBin make 2>$null
             Write-Host "✅ Icon embedded" -ForegroundColor Green
         }
     } else {
