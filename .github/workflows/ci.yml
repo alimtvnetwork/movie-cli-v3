@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - ".github/logs/**"    # Don't re-trigger on log commits
   pull_request:
     branches: [main]
 
@@ -11,7 +13,7 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
 
 permissions:
-  contents: read
+  contents: write           # Needed for log commit-back
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -56,15 +58,46 @@ jobs:
         run: go mod download
 
       - name: Go vet
+        id: govet
         if: needs.sha-check.outputs.already-built != 'true'
-        run: go vet ./...
+        run: |
+          go vet ./... 2>&1 | tee /tmp/govet.out
+        continue-on-error: true
 
       - name: golangci-lint
+        id: golangcilint
         if: needs.sha-check.outputs.already-built != 'true'
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-          args: --timeout=5m
+          args: --timeout=5m --out-format=line-number 2>&1 | tee /tmp/golangci.out
+        continue-on-error: true
+
+      - name: Write lint log
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        run: |
+          mkdir -p /tmp/ci-logs
+          {
+            echo "=== GO VET ==="
+            echo "status: ${{ steps.govet.outcome }}"
+            cat /tmp/govet.out 2>/dev/null || echo "(no output)"
+            echo ""
+            echo "=== GOLANGCI-LINT ==="
+            echo "status: ${{ steps.golangcilint.outcome }}"
+            cat /tmp/golangci.out 2>/dev/null || echo "(no output)"
+          } > /tmp/ci-logs/lint.log
+
+      - name: Upload lint log
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-log-lint
+          path: /tmp/ci-logs/lint.log
+          retention-days: 7
+
+      - name: Fail if lint failed
+        if: steps.govet.outcome == 'failure' || steps.golangcilint.outcome == 'failure'
+        run: exit 1
 
   # ─── Vulnerability scan ────────────────────────────────────
   vulncheck:
@@ -94,18 +127,50 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
       - name: Run govulncheck
+        id: vulncheck
         if: needs.sha-check.outputs.already-built != 'true'
         run: |
           set +e
           govulncheck ./... 2>&1 | tee /tmp/vulncheck.out
           rc=$?
+          vuln_status="pass"
           if [ $rc -ne 0 ]; then
             if grep "packages you import" /tmp/vulncheck.out | grep -qv "0 vulnerabilities in packages"; then
               echo "::error::Third-party vulnerabilities detected"
-              exit 1
+              vuln_status="fail-third-party"
+            else
+              echo "::warning::Only stdlib vulnerabilities found (no fix available in current Go version)"
+              vuln_status="warn-stdlib"
             fi
-            echo "::warning::Only stdlib vulnerabilities found (no fix available in current Go version)"
           fi
+          echo "vuln_status=$vuln_status" >> "$GITHUB_OUTPUT"
+
+          # Write log
+          mkdir -p /tmp/ci-logs
+          {
+            echo "=== VULNERABILITY SCAN ==="
+            echo "status: $vuln_status"
+            echo "exit_code: $rc"
+            echo ""
+            cat /tmp/vulncheck.out
+          } > /tmp/ci-logs/vulncheck.log
+
+          if [ "$vuln_status" = "fail-third-party" ]; then
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Upload vulncheck log
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-log-vulncheck
+          path: /tmp/ci-logs/vulncheck.log
+          retention-days: 7
+
+      - name: Fail if third-party vulns
+        if: steps.vulncheck.outcome == 'failure'
+        run: exit 1
 
   # ─── Tests (parallel matrix) ───────────────────────────────
   test:
@@ -137,6 +202,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
+        id: run-tests
         if: needs.sha-check.outputs.already-built != 'true'
         run: |
           set -uo pipefail
@@ -147,17 +213,39 @@ jobs:
           exit_code=${PIPESTATUS[0]}
           set -e
 
-          if [ "$exit_code" -ne 0 ]; then
-            echo "========================================="
-            echo "  FAILED TESTS (${{ matrix.name }})"
-            echo "========================================="
-            grep -E -A 5 '^--- FAIL:' test-output.txt || true
-            echo "========================================="
-          fi
+          # Write structured log
+          mkdir -p /tmp/ci-logs
+          {
+            echo "=== TEST: ${{ matrix.name }} ==="
+            echo "status: $([ $exit_code -eq 0 ] && echo 'pass' || echo 'fail')"
+            echo "exit_code: $exit_code"
+            echo "packages: ${{ matrix.packages }}"
+            echo ""
+            if [ "$exit_code" -ne 0 ]; then
+              echo "--- FAILED TESTS ---"
+              grep -E -A 5 '^--- FAIL:' test-output.txt || echo "(no FAIL lines found)"
+              echo ""
+            fi
+            echo "--- SUMMARY ---"
+            echo "passed: $(grep -c '^--- PASS:' test-output.txt || echo 0)"
+            echo "failed: $(grep -c '^--- FAIL:' test-output.txt || echo 0)"
+            echo ""
+            echo "--- FULL OUTPUT ---"
+            cat test-output.txt
+          } > /tmp/ci-logs/test-${{ matrix.name }}.log
 
           exit "$exit_code"
+        continue-on-error: true
 
-      - name: Upload test results
+      - name: Upload test log
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-log-test-${{ matrix.name }}
+          path: /tmp/ci-logs/test-${{ matrix.name }}.log
+          retention-days: 7
+
+      - name: Upload coverage
         uses: actions/upload-artifact@v4
         if: always() && needs.sha-check.outputs.already-built != 'true'
         with:
@@ -166,6 +254,10 @@ jobs:
             test-output.txt
             coverage-${{ matrix.name }}.out
           retention-days: 7
+
+      - name: Fail if tests failed
+        if: steps.run-tests.outcome == 'failure'
+        run: exit 1
 
   # ─── Test summary + SHA cache write ────────────────────────
   test-summary:
@@ -273,6 +365,7 @@ jobs:
           go-winres init --icon assets/icon.ico
 
       - name: Build binary
+        id: build-binary
         if: needs.sha-check.outputs.already-built != 'true'
         run: |
           VERSION="dev-${GITHUB_SHA::10}"
@@ -281,16 +374,40 @@ jobs:
             -X 'github.com/mahin/mahin-cli-v2/version.Commit=${GITHUB_SHA::10}' \
             -X 'github.com/mahin/mahin-cli-v2/version.BuildDate=$(date -u +%Y-%m-%d)'"
           OUTPUT="movie-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
-          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags "$LDFLAGS" -o "$OUTPUT" .
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags "$LDFLAGS" -o "$OUTPUT" . 2>&1 | tee /tmp/build.out
           echo "Built: $OUTPUT ($(stat --format='%s' "$OUTPUT" | numfmt --to=iec --suffix=B))"
+        continue-on-error: true
+
+      - name: Write build log on failure
+        if: always() && steps.build-binary.outcome == 'failure'
+        run: |
+          mkdir -p /tmp/ci-logs
+          {
+            echo "=== BUILD: ${{ matrix.os }}/${{ matrix.arch }} ==="
+            echo "status: fail"
+            echo ""
+            cat /tmp/build.out 2>/dev/null || echo "(no output captured)"
+          } > /tmp/ci-logs/build-${{ matrix.os }}-${{ matrix.arch }}.log
+
+      - name: Upload build log
+        if: always() && steps.build-binary.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-log-build-${{ matrix.os }}-${{ matrix.arch }}
+          path: /tmp/ci-logs/build-${{ matrix.os }}-${{ matrix.arch }}.log
+          retention-days: 7
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
-        if: needs.sha-check.outputs.already-built != 'true'
+        if: needs.sha-check.outputs.already-built != 'true' && steps.build-binary.outcome == 'success'
         with:
           name: movie-${{ matrix.os }}-${{ matrix.arch }}
           path: movie-*
           retention-days: 14
+
+      - name: Fail if build failed
+        if: steps.build-binary.outcome == 'failure'
+        run: exit 1
 
   # ─── Build summary ─────────────────────────────────────────
   build-summary:
@@ -327,3 +444,138 @@ jobs:
           done
           echo ""
           echo "✅ All builds complete."
+
+  # ─── Failure Report: write cicd.log and commit back ────────
+  failure-report:
+    name: Write Failure Log
+    runs-on: ubuntu-latest
+    needs: [sha-check, lint, vulncheck, test, test-summary, build, build-summary]
+    if: failure() && needs.sha-check.outputs.already-built != 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all CI logs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ci-log-*
+          path: collected-logs
+          merge-multiple: false
+
+      - name: Assemble cicd.log
+        run: |
+          mkdir -p .github/logs
+
+          {
+            echo "# CI/CD Failure Report"
+            echo ""
+            echo "## Run Metadata"
+            echo ""
+            echo "| Field         | Value |"
+            echo "|---------------|-------|"
+            echo "| Workflow      | CI |"
+            echo "| Run ID        | ${{ github.run_id }} |"
+            echo "| Run Number    | ${{ github.run_number }} |"
+            echo "| Commit        | ${{ github.sha }} |"
+            echo "| Branch        | ${{ github.head_ref || github.ref_name }} |"
+            echo "| Triggered By  | ${{ github.actor }} |"
+            echo "| Event         | ${{ github.event_name }} |"
+            echo "| Timestamp     | $(date -u '+%Y-%m-%dT%H:%M:%SZ') |"
+            echo "| Run URL       | https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} |"
+            echo ""
+            echo "## Job Results"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            echo "| Lint | ${{ needs.lint.result }} |"
+            echo "| Vulnerability Scan | ${{ needs.vulncheck.result }} |"
+            echo "| Test | ${{ needs.test.result }} |"
+            echo "| Test Summary | ${{ needs.test-summary.result }} |"
+            echo "| Build | ${{ needs.build.result }} |"
+            echo "| Build Summary | ${{ needs.build-summary.result }} |"
+            echo ""
+            echo "## Failure Details"
+            echo ""
+            echo "The sections below contain the raw output from each failed stage."
+            echo "An AI agent can read this file to diagnose and fix the failures."
+            echo ""
+
+            # Collect all log files
+            found_logs=false
+            for logdir in collected-logs/ci-log-*; do
+              [ ! -d "$logdir" ] && continue
+              for logfile in "$logdir"/*.log; do
+                [ ! -f "$logfile" ] && continue
+                found_logs=true
+                stage=$(basename "$logdir" | sed 's/ci-log-//')
+                echo "### Stage: $stage"
+                echo ""
+                echo '```'
+                cat "$logfile"
+                echo '```'
+                echo ""
+              done
+            done
+
+            if [ "$found_logs" = false ]; then
+              echo "### No detailed logs captured"
+              echo ""
+              echo "Individual job logs were not uploaded as artifacts."
+              echo "Check the GitHub Actions run URL above for full output."
+            fi
+
+            echo "---"
+            echo ""
+            echo "## AI Fix Instructions"
+            echo ""
+            echo "1. Read each failure section above."
+            echo "2. Identify the root cause (lint error, test failure, vulnerability, build error)."
+            echo "3. Apply the fix to the relevant source file."
+            echo "4. Push the fix — CI will re-run and this file will be cleared on success."
+            echo ""
+            echo "### Common Fix Patterns"
+            echo ""
+            echo "| Failure Type | Typical Fix |"
+            echo "|-------------|-------------|"
+            echo "| \`go vet\` | Fix the reported code issue (unused vars, wrong types, etc.) |"
+            echo "| \`golangci-lint\` | Fix the linting violation or add a \`//nolint\` comment with justification |"
+            echo "| \`govulncheck\` (3rd-party) | Run \`go get <package>@latest && go mod tidy\` |"
+            echo "| \`govulncheck\` (stdlib) | Upgrade Go version in \`go.mod\` or wait for patch |"
+            echo "| Test failure | Read the FAIL output, fix the logic or update the test assertion |"
+            echo "| Build failure | Fix compilation errors shown in the build output |"
+          } > .github/logs/cicd.log
+
+      - name: Commit failure log
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/logs/cicd.log
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "ci: write failure log [skip ci]"
+          git push
+
+  # ─── Success cleanup: remove cicd.log if it exists ─────────
+  success-cleanup:
+    name: Clear Failure Log
+    runs-on: ubuntu-latest
+    needs: [sha-check, lint, vulncheck, test, test-summary, build, build-summary]
+    if: success()
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove cicd.log if present
+        run: |
+          if [ -f .github/logs/cicd.log ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git rm .github/logs/cicd.log
+            git commit -m "ci: clear failure log (all checks passed) [skip ci]"
+            git push
+          else
+            echo "No failure log to clean up."
+          fi

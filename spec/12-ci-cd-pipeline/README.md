@@ -14,6 +14,7 @@ Generic, portable documentation for the project's CI/CD pipeline architecture. T
 | [01-ci-pipeline.md](./01-ci-pipeline.md) | CI: lint, vulnerability scan, parallel tests, cross-compiled builds, SHA deduplication |
 | [02-release-pipeline.md](./02-release-pipeline.md) | Release automation: version resolution, binary packaging, install scripts, GitHub releases |
 | [03-vulnerability-scanning.md](./03-vulnerability-scanning.md) | Standalone vulnerability scanning: scheduled and manual |
+| [04-ai-readable-failure-logs.md](./04-ai-readable-failure-logs.md) | AI-readable failure log pattern: structured log → commit → AI fixes → auto-clear |
 
 ---
 
