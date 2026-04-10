@@ -40,7 +40,6 @@
 | # | Suggestion | Affected | Rationale |
 |---|-----------|----------|-----------|
 | S17 | Implement retry logic in TMDb client | `tmdb/client.go` | Rate-limit handling spec exists but no code |
-| S19 | Add `movie cleanup` command | `cmd/`, `db/` | Find stale DB entries where file no longer exists |
 
 ### P3 — Low Priority
 
