@@ -34,11 +34,38 @@ jobs:
           key: ci-passed-${{ github.sha }}
           lookup-only: true
 
+  # ─── Clear previous error logs ──────────────────────────────
+  clear-logs:
+    name: Clear Error Logs
+    runs-on: ubuntu-latest
+    needs: sha-check
+    if: needs.sha-check.outputs.already-built != 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete previous error logs
+        run: |
+          if [ -d ".github/logs/errors" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            rm -rf .github/logs/errors
+            git add -A .github/logs/errors
+            git diff --cached --quiet || {
+              git commit -m "ci: clear error logs [skip ci]"
+              git push
+            }
+          else
+            echo "No error logs to clear."
+          fi
+
   # ─── Lint ──────────────────────────────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: sha-check
+    needs: [sha-check, clear-logs]
     steps:
       - name: Already validated
         if: needs.sha-check.outputs.already-built == 'true'
@@ -103,7 +130,7 @@ jobs:
   vulncheck:
     name: Vulnerability Scan
     runs-on: ubuntu-latest
-    needs: sha-check
+    needs: [sha-check, clear-logs]
     steps:
       - name: Already validated
         if: needs.sha-check.outputs.already-built == 'true'
@@ -453,11 +480,11 @@ jobs:
           echo ""
           echo "✅ All builds complete."
 
-  # ─── Failure Report: write cicd.log and commit back ────────
+  # ─── Failure Report: write per-stage logs to .github/logs/errors/ ────
   failure-report:
-    name: Write Failure Log
+    name: Write Error Logs
     runs-on: ubuntu-latest
-    needs: [sha-check, lint, vulncheck, test, test-summary, build, build-summary]
+    needs: [sha-check, clear-logs, lint, vulncheck, test, test-summary, build, build-summary]
     if: failure() && needs.sha-check.outputs.already-built != 'true'
     steps:
       - uses: actions/checkout@v6
@@ -472,10 +499,21 @@ jobs:
           path: collected-logs
           merge-multiple: false
 
-      - name: Assemble cicd.log
+      - name: Assemble error logs
         run: |
-          mkdir -p .github/logs
+          mkdir -p .github/logs/errors
 
+          # Copy individual stage logs into errors/
+          for logdir in collected-logs/ci-log-*; do
+            [ ! -d "$logdir" ] && continue
+            for logfile in "$logdir"/*.log; do
+              [ ! -f "$logfile" ] && continue
+              stage=$(basename "$logdir" | sed 's/ci-log-//')
+              cp "$logfile" ".github/logs/errors/${stage}.log"
+            done
+          done
+
+          # Build summary.log
           {
             echo "# CI/CD Failure Report"
             echo ""
@@ -495,36 +533,27 @@ jobs:
             echo ""
             echo "## Job Results"
             echo ""
-            echo "| Job | Status |"
-            echo "|-----|--------|"
-            echo "| Lint | ${{ needs.lint.result }} |"
-            echo "| Vulnerability Scan | ${{ needs.vulncheck.result }} |"
-            echo "| Test | ${{ needs.test.result }} |"
-            echo "| Test Summary | ${{ needs.test-summary.result }} |"
-            echo "| Build | ${{ needs.build.result }} |"
-            echo "| Build Summary | ${{ needs.build-summary.result }} |"
+            echo "| Job | Status | Log File |"
+            echo "|-----|--------|----------|"
+            echo "| Lint | ${{ needs.lint.result }} | $([ -f .github/logs/errors/lint.log ] && echo 'errors/lint.log' || echo '—') |"
+            echo "| Vulnerability Scan | ${{ needs.vulncheck.result }} | $([ -f .github/logs/errors/vulncheck.log ] && echo 'errors/vulncheck.log' || echo '—') |"
+            echo "| Test | ${{ needs.test.result }} | $(ls .github/logs/errors/test-*.log 2>/dev/null | sed 's|.github/logs/||' | tr '\n' ',' | sed 's/,$//' || echo '—') |"
+            echo "| Build | ${{ needs.build.result }} | $(ls .github/logs/errors/build-*.log 2>/dev/null | sed 's|.github/logs/||' | tr '\n' ',' | sed 's/,$//' || echo '—') |"
             echo ""
-            echo "## Failure Details"
-            echo ""
-            echo "The sections below contain the raw output from each failed stage."
-            echo "An AI agent can read this file to diagnose and fix the failures."
+            echo "## Failed Stages"
             echo ""
 
-            # Collect all log files
             found_logs=false
-            for logdir in collected-logs/ci-log-*; do
-              [ ! -d "$logdir" ] && continue
-              for logfile in "$logdir"/*.log; do
-                [ ! -f "$logfile" ] && continue
-                found_logs=true
-                stage=$(basename "$logdir" | sed 's/ci-log-//')
-                echo "### Stage: $stage"
-                echo ""
-                echo '```'
-                cat "$logfile"
-                echo '```'
-                echo ""
-              done
+            for f in .github/logs/errors/*.log; do
+              [ "$(basename "$f")" = "summary.log" ] && continue
+              [ ! -f "$f" ] && continue
+              found_logs=true
+              echo "### $(basename "$f" .log)"
+              echo ""
+              echo '```'
+              cat "$f"
+              echo '```'
+              echo ""
             done
 
             if [ "$found_logs" = false ]; then
@@ -538,10 +567,10 @@ jobs:
             echo ""
             echo "## AI Fix Instructions"
             echo ""
-            echo "1. Read each failure section above."
-            echo "2. Identify the root cause (lint error, test failure, vulnerability, build error)."
+            echo "1. Read each \`.log\` file in \`.github/logs/errors/\`."
+            echo "2. Identify the root cause from the error output."
             echo "3. Apply the fix to the relevant source file."
-            echo "4. Push the fix — CI will re-run and this file will be cleared on success."
+            echo "4. Push — CI will re-run, clear the folder, and only write new failures."
             echo ""
             echo "### Common Fix Patterns"
             echo ""
@@ -553,22 +582,22 @@ jobs:
             echo "| \`govulncheck\` (stdlib) | Upgrade Go version in \`go.mod\` or wait for patch |"
             echo "| Test failure | Read the FAIL output, fix the logic or update the test assertion |"
             echo "| Build failure | Fix compilation errors shown in the build output |"
-          } > .github/logs/cicd.log
+          } > .github/logs/errors/summary.log
 
-      - name: Commit failure log
+      - name: Commit error logs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/logs/cicd.log
+          git add .github/logs/errors/
           git diff --cached --quiet && echo "No changes to commit" && exit 0
-          git commit -m "ci: write failure log [skip ci]"
+          git commit -m "ci: write failure logs [skip ci]"
           git push
 
-  # ─── Success cleanup: remove cicd.log if it exists ─────────
+  # ─── Success cleanup: remove old cicd.log if still present ──
   success-cleanup:
-    name: Clear Failure Log
+    name: Clear Legacy Log
     runs-on: ubuntu-latest
-    needs: [sha-check, lint, vulncheck, test, test-summary, build, build-summary]
+    needs: [sha-check, clear-logs, lint, vulncheck, test, test-summary, build, build-summary]
     if: success()
     steps:
       - uses: actions/checkout@v6
@@ -576,14 +605,14 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remove cicd.log if present
+      - name: Remove legacy cicd.log if present
         run: |
           if [ -f .github/logs/cicd.log ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git rm .github/logs/cicd.log
-            git commit -m "ci: clear failure log (all checks passed) [skip ci]"
+            git commit -m "ci: remove legacy cicd.log [skip ci]"
             git push
           else
-            echo "No failure log to clean up."
+            echo "No legacy log to clean up."
           fi
