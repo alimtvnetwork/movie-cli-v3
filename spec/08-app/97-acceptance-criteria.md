@@ -1,7 +1,7 @@
 # Application Commands — Acceptance Criteria
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-04-06  
+**Version:** 1.1.0  
+**Last Updated:** 2026-04-10  
 **Format:** GIVEN/WHEN/THEN (E2E-test-ready)
 
 ---
@@ -177,6 +177,17 @@
 - **GIVEN** the copy fails mid-transfer **WHEN** fallback is active **THEN** the source file is NOT deleted and an error is reported
 - **GIVEN** no argument is provided **WHEN** move starts **THEN** interactive prompt offers: Downloads / Scan Dir / Custom path
 
+### AC-10b: Batch Move
+
+**GIVEN** a source directory with multiple video files  
+**WHEN** `movie move /path --all`  
+**THEN** all video files are moved to their destination using the selected category  
+**AND** each file is renamed to `Title (Year).ext`  
+**AND** all moves are logged to `move_history`
+
+**Edge Cases:**
+- **GIVEN** `--all` is used with a directory containing 0 video files **WHEN** move runs **THEN** "no video files found" is shown
+
 ---
 
 ## AC-11: Rename Command
@@ -274,6 +285,26 @@
 **GIVEN** tags exist across multiple media  
 **WHEN** `movie tag list` (no ID)  
 **THEN** all unique tags are shown with media count, e.g., `favorite (3)`
+
+---
+
+## AC-16: Export Command
+
+**GIVEN** media records exist in the database  
+**WHEN** `movie export` is run  
+**THEN** all media records are serialized to JSON and written to `./data/json/export/media.json`  
+**AND** output shows: `Exported N items → <path>`
+
+### AC-16a: Custom Output Path
+
+**GIVEN** media records exist  
+**WHEN** `movie export -o ~/Desktop/library.json`  
+**THEN** the JSON is written to the specified path instead of the default
+
+**Edge Cases:**
+- **GIVEN** no media records exist **WHEN** export runs **THEN** message: "No media to export"
+- **GIVEN** the output directory does not exist **WHEN** export runs **THEN** the directory is created automatically
+- **GIVEN** the output path is read-only **WHEN** export runs **THEN** an error is shown
 
 ---
 
