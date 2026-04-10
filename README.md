@@ -467,7 +467,7 @@ Both trigger the same pipeline. Version is resolved from the ref name.
 
 > **CI Pipeline:** Pushing a `release/*` branch or `v*` tag triggers GitHub Actions to cross-compile 6 targets, generate checksums, and create a GitHub release with changelog and install instructions.
 
-See [spec/pipeline/01-release-pipeline.md](spec/pipeline/01-release-pipeline.md) for the full pipeline spec.
+See [spec/12-ci-cd-pipeline/02-release-pipeline.md](spec/12-ci-cd-pipeline/02-release-pipeline.md) for the full pipeline spec.
 
 ---
 
@@ -503,9 +503,13 @@ movie-cli-v2/
 │   └── history.go                 # Move + scan history
 ├── updater/updater.go             # Git-based self-update
 ├── version/version.go             # Build-time version variables
-├── .github/workflows/
-│   ├── ci.yml                     # Lint + test + vulncheck
-│   └── release.yml                # Cross-compile + GitHub Release
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml                 # Lint + test + vulncheck + failure log
+│   │   ├── release.yml            # Cross-compile + GitHub Release
+│   │   └── vulncheck.yml          # Weekly vulnerability scan
+│   └── logs/
+│       └── cicd.log               # AI-readable failure report (auto-generated)
 ├── run.ps1                        # PowerShell build + deploy pipeline
 ├── install.ps1                    # Bootstrap installer
 ├── CHANGELOG.md                   # Release notes
