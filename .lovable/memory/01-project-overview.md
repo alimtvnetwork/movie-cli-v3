@@ -1,14 +1,14 @@
 # Project Overview
 
-> **Last Updated**: 17-Mar-2026
+> **Last Updated**: 10-Apr-2026
 
 ## Project
 
-- **Name**: Movie CLI
+- **Name**: Mahin CLI (formerly Movie CLI)
 - **Type**: Go CLI application (NOT a web app)
-- **Binary**: `movie-cli`
+- **Binary**: `mahin`
 - **Language**: Go 1.22
-- **Module**: `github.com/mahin/mahin-cli-v1`
+- **Module**: `github.com/mahin/mahin-cli-v2`
 - **Framework**: Cobra (CLI), SQLite (storage), TMDb API (metadata)
 
 ## Purpose
@@ -26,50 +26,44 @@ A cross-platform CLI tool for managing a personal movie and TV show library. It 
 ## Command Tree
 
 ```
-movie-cli
+mahin
 ├── hello                      # Greeting with version
-├── version                    # Version/commit/build date
+├── version                    # Version/commit/build date + Go/OS info
 ├── self-update                # git pull --ff-only
+├── changelog                  # Show changelog
 └── movie
     ├── config                 # View/set configuration
-    ├── scan                   # Scan folder → DB + TMDb
-    ├── ls                     # Paginated library list
+    ├── scan                   # Scan folder → DB + TMDb + JSON metadata
+    ├── ls                     # Paginated library list (file-backed only)
     ├── search                 # Live TMDb search → save
     ├── info                   # Local DB → TMDb fallback
-    ├── suggest                # Recommendations/trending
-    ├── move                   # Browse + move + track
+    ├── suggest                # Recommendations/trending + genre discover
+    ├── move                   # Browse + move + track (--all batch support)
     ├── rename                 # Batch clean rename
     ├── undo                   # Revert last move/rename
     ├── play                   # Open with default player
-    └── stats                  # Library statistics
+    ├── stats                  # Library statistics
+    ├── tag                    # Add/remove/list tags
+    └── export                 # Export library data
 ```
 
 ## Important Notes for AI
 
-- **This is NOT a web project** — no `package.json`, no dev server, no preview
+- **This is NOT a web project** — no dev server, no preview
 - Build errors in Lovable (`no package.json found`, `no command found for task "dev"`) are **expected and MUST be ignored**
 - All file operations require a real OS/terminal to test
-- Full specification lives in `spec.md` at project root
+- Full specification lives in `spec/` folder
 - Milestone markers use `readm.txt` format: `let's start now {date} {time Malaysia}`
-- `.gitignore` cannot be created in Lovable environment — must be added manually
-- **Always read memory files before making changes** (see `workflow/01-ai-success-plan.md`)
+- **Always read memory files before making changes**
 
-## File Structure (as of 17-Mar-2026)
+## File Structure (as of 10-Apr-2026)
 
-- `cmd/` — 15 Go files (root + hello + version + update + movie parent + 10 subcommands + move_helpers)
+- `cmd/` — 21 Go files (root, hello, version, update, changelog + movie parent + 14 subcommands + move_helpers)
 - `cleaner/` — 1 file (filename cleaning)
 - `tmdb/` — 1 file (API client)
-- `db/` — 5 files (db.go, media.go, config.go, history.go, helpers.go)
+- `db/` — 6 files (db.go, media.go, config.go, history.go, helpers.go, tags.go)
 - `updater/` — 1 file (git self-update)
 - `version/` — 1 file (build-time vars)
-
-## Session History (17-Mar-2026)
-
-1. Updated `readm.txt` with milestone marker
-2. Attempted `.gitignore` creation (blocked by Lovable environment)
-3. Fixed timestamp bug in `saveHistoryLog` — `"now"` → `time.Now().Format(time.RFC3339)`
-4. Deduplicated TMDb fetch logic — `scan` and `search` now use shared helpers from `movie_info.go`
-5. Split `cmd/movie_move.go` (348 lines) → `movie_move.go` + `movie_move_helpers.go`
-6. Split `db/sqlite.go` (452 lines) → 5 focused files
-7. Updated all memory files
-8. Created AI success rate plan
+- `.github/` — Release pipeline (release.yml)
+- `spec/` — Structured specification docs
+- `docs/` — Additional documentation
