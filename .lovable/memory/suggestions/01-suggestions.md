@@ -40,7 +40,6 @@
 |---|-----------|----------|-----------|
 | S10 | Add file size stats to `movie stats` | `cmd/movie_stats.go` | Total size, average size, largest file |
 | S11 | Add error handling spec (TMDb rate limits, DB locks, offline) | `spec/` | No error handling documentation |
-| S12 | Update README.md with full feature documentation | `README.md` | May be outdated |
 
 ### P3 — Low Priority
 
