@@ -1,0 +1,68 @@
+%% 02-ls-flow.mmd — mahin movie ls
+%% Version: 1.1.0 | Updated: 2026-04-06
+
+flowchart TD
+    START([movie ls]) --> OPEN_DB[Open database]
+    OPEN_DB --> DB_OK{DB\nOK?}
+    DB_OK -->|No| ERR_DB[/Error: Database error/]
+    DB_OK -->|Yes| GET_PAGE_SIZE[Read page_size\nfrom config]
+
+    GET_PAGE_SIZE --> DEFAULT_SIZE{Valid\nsize?}
+    DEFAULT_SIZE -->|No| SET_DEFAULT[Default to 20]
+    DEFAULT_SIZE -->|Yes| COUNT_MEDIA
+    SET_DEFAULT --> COUNT_MEDIA[CountMedia total]
+
+    COUNT_MEDIA --> HAS_MEDIA{Total\n> 0?}
+    HAS_MEDIA -->|No| EMPTY[/No media found.\nRun scan first./]
+    HAS_MEDIA -->|Yes| INIT[offset = 0]
+
+    INIT --> FETCH_PAGE[ListMedia\noffset, pageSize]
+    FETCH_PAGE --> FETCH_OK{Query\nOK?}
+    FETCH_OK -->|No| ERR_QUERY[/Error: query failed/]
+    FETCH_OK -->|Yes| CLEAR_SCREEN[Clear terminal]
+
+    CLEAR_SCREEN --> PRINT_HEADER[Print page X/Y\nand total count]
+    PRINT_HEADER --> PRINT_ROWS[Print each media row:\nnum, title, year, rating, type]
+    PRINT_ROWS --> PRINT_NAV[Print navigation:\nN P Q 1-9]
+
+    PRINT_NAV --> WAIT_INPUT(Wait for\nuser input)
+
+    WAIT_INPUT --> INPUT_N{N?}
+    INPUT_N -->|Yes| CHK_NEXT{More\npages?}
+    CHK_NEXT -->|Yes| INC_OFFSET[offset += pageSize]
+    CHK_NEXT -->|No| WARN_LAST[/Already on last page/]
+    INC_OFFSET --> FETCH_PAGE
+    WARN_LAST --> WAIT_INPUT
+
+    INPUT_N -->|No| INPUT_P{P?}
+    INPUT_P -->|Yes| CHK_PREV{offset\n>= pageSize?}
+    CHK_PREV -->|Yes| DEC_OFFSET[offset -= pageSize]
+    CHK_PREV -->|No| WARN_FIRST[/Already on first page/]
+    DEC_OFFSET --> FETCH_PAGE
+    WARN_FIRST --> WAIT_INPUT
+
+    INPUT_P -->|No| INPUT_Q{Q?}
+    INPUT_Q -->|Yes| BYE([Bye!])
+
+    INPUT_Q -->|No| INPUT_NUM{Valid\nnumber?}
+    INPUT_NUM -->|Yes| SHOW_DETAIL[showMediaDetail\nby ID]
+    SHOW_DETAIL --> WAIT_ENTER(Press Enter\nto continue)
+    WAIT_ENTER --> FETCH_PAGE
+    INPUT_NUM -->|No| WAIT_INPUT
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef prompt fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+
+    class START,BYE entryExit
+    class OPEN_DB,SET_DEFAULT,COUNT_MEDIA,INIT,CLEAR_SCREEN,PRINT_HEADER,PRINT_ROWS,PRINT_NAV,INC_OFFSET,DEC_OFFSET,SHOW_DETAIL process
+    class DB_OK,DEFAULT_SIZE,HAS_MEDIA,FETCH_OK,INPUT_N,CHK_NEXT,INPUT_P,CHK_PREV,INPUT_Q,INPUT_NUM decision
+    class FETCH_PAGE,GET_PAGE_SIZE info
+    class ERR_DB,ERR_QUERY error
+    class WARN_LAST,WARN_FIRST,EMPTY warning
+    class WAIT_INPUT,WAIT_ENTER prompt

@@ -1,0 +1,128 @@
+%% 13-tmdb-data-flow.mmd — How data flows between CLI, TMDb API, and local DB
+%% Version: 1.0.0 | Updated: 2026-04-08
+
+flowchart TD
+    subgraph CLI ["CLI Commands"]
+        SCAN["movie scan"]
+        SEARCH["movie search"]
+        INFO["movie info"]
+        SUGGEST["movie suggest"]
+    end
+
+    subgraph TMDB_CLIENT ["tmdb/client.go — HTTP Client"]
+        SM["SearchMulti\n/search/multi\nquery + page=1"]
+        GMD["GetMovieDetails\n/movie/{id}"]
+        GTD["GetTVDetails\n/tv/{id}"]
+        GMC["GetMovieCredits\n/movie/{id}/credits"]
+        GTC["GetTVCredits\n/tv/{id}/credits"]
+        DPOSTER["DownloadPoster\nimage.tmdb.org/t/p/w500"]
+        GREC["GetRecommendations\n/{type}/{id}/recommendations"]
+        DISC["DiscoverByGenre\n/discover/{type}?with_genres"]
+        TREND["Trending\n/trending/{type}/week"]
+    end
+
+    subgraph TMDB_API ["TMDb REST API — api.themoviedb.org/3"]
+        API_SEARCH["/search/multi"]
+        API_MOVIE["/movie/{id}"]
+        API_TV["/tv/{id}"]
+        API_MCRED["/movie/{id}/credits"]
+        API_TCRED["/tv/{id}/credits"]
+        API_IMG["image.tmdb.org"]
+        API_REC["/{type}/{id}/recommendations"]
+        API_DISC["/discover/{type}"]
+        API_TREND["/trending/{type}/week"]
+    end
+
+    subgraph HELPERS ["Shared Helpers — cmd/movie_info.go"]
+        FMD["fetchMovieDetails\nGetMovieDetails + GetMovieCredits\nMaps: imdb_id, genres, director, cast"]
+        FTD["fetchTVDetails\nGetTVDetails + GetTVCredits\nMaps: genres, creators, cast"]
+    end
+
+    subgraph CLEANER ["cleaner package"]
+        CLEAN["Clean filename\nExtract: title, year, type"]
+        SLUG["ToSlug\nGenerate thumbnail path"]
+    end
+
+    subgraph LOCAL_DB ["Local SQLite — db/database.go"]
+        INSERT["InsertMedia"]
+        UPDATE["UpdateMediaByTmdbID"]
+        SEARCH_DB["SearchMedia"]
+        GET_BY_ID["GetMediaByID"]
+        SCAN_HIST["InsertScanHistory"]
+    end
+
+    subgraph STORAGE ["Local Filesystem"]
+        THUMBS["thumbnails/{slug}/{slug}.jpg"]
+        JSON_DIR["json/{movie|tv}/"]
+    end
+
+    %% SCAN flow
+    SCAN -->|"1. Read dir entries"| CLEAN
+    CLEAN -->|"2. title + year"| SM
+    SM --> API_SEARCH
+    API_SEARCH -->|"JSON: id, title, vote_avg,\nposter_path, media_type,\ngenre_ids"| SM
+    SM -->|"3. Best match"| FMD
+    SM -->|"3. Best match"| FTD
+
+    %% SEARCH flow
+    SEARCH -->|"1. User query"| SM
+    SM -->|"2. Display results"| SEARCH
+    SEARCH -->|"3. User picks"| FMD
+    SEARCH -->|"3. User picks"| FTD
+
+    %% INFO flow
+    INFO -->|"1. Check local DB"| SEARCH_DB
+    INFO -->|"1. Check local DB"| GET_BY_ID
+    INFO -->|"2. Not found locally"| SM
+
+    %% SUGGEST flow
+    SUGGEST -->|"1. Pick from DB"| SEARCH_DB
+    SUGGEST -->|"2. Get recs"| GREC
+    SUGGEST -->|"2. Discover"| DISC
+    SUGGEST -->|"2. Trending"| TREND
+    GREC --> API_REC
+    DISC --> API_DISC
+    TREND --> API_TREND
+
+    %% Helpers call TMDb
+    FMD --> GMD
+    FMD --> GMC
+    FTD --> GTD
+    FTD --> GTC
+    GMD --> API_MOVIE
+    GMC --> API_MCRED
+    GTD --> API_TV
+    GTC --> API_TCRED
+    API_MOVIE -->|"imdb_id, genres,\nruntime"| FMD
+    API_MCRED -->|"cast[0..4].name,\ncrew[job=Director]"| FMD
+    API_TV -->|"genres, seasons"| FTD
+    API_TCRED -->|"cast[0..4].name,\ncrew[job=Creator]"| FTD
+
+    %% Poster download
+    FMD --> DPOSTER
+    FTD --> DPOSTER
+    DPOSTER --> API_IMG
+    API_IMG -->|"JPEG binary"| THUMBS
+
+    %% DB writes
+    FMD -->|"Enriched Media struct"| INSERT
+    FTD -->|"Enriched Media struct"| INSERT
+    INSERT -->|"Duplicate?"| UPDATE
+    SCAN -->|"Log scan"| SCAN_HIST
+    SEARCH -->|"Save JSON"| JSON_DIR
+
+    classDef cli fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+    classDef tmdbClient fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef tmdbApi fill:#06b6d4,stroke:#0891b2,color:#ffffff
+    classDef helper fill:#f59e0b,stroke:#d97706,color:#1e293b
+    classDef cleaner fill:#10b981,stroke:#059669,color:#ffffff
+    classDef db fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef storage fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+
+    class SCAN,SEARCH,INFO,SUGGEST cli
+    class SM,GMD,GTD,GMC,GTC,DPOSTER,GREC,DISC,TREND tmdbClient
+    class API_SEARCH,API_MOVIE,API_TV,API_MCRED,API_TCRED,API_IMG,API_REC,API_DISC,API_TREND tmdbApi
+    class FMD,FTD helper
+    class CLEAN,SLUG cleaner
+    class INSERT,UPDATE,SEARCH_DB,GET_BY_ID,SCAN_HIST db
+    class THUMBS,JSON_DIR storage

@@ -1,0 +1,76 @@
+---
+title: Command-Database Access Map
+---
+flowchart LR
+    subgraph Commands
+        scan[movie scan]
+        ls[movie ls]
+        search[movie search]
+        info[movie info]
+        suggest[movie suggest]
+        move[movie move]
+        rename[movie rename]
+        undo[movie undo]
+        play[movie play]
+        stats[movie stats]
+        config[movie config]
+        tag_add[movie tag add]
+        tag_rm[movie tag remove]
+        tag_ls[movie tag list]
+    end
+
+    subgraph Tables
+        media[(media)]
+        move_hist[(move_history)]
+        tags_t[(tags)]
+        scan_hist[(scan_history)]
+        config_t[(config)]
+    end
+
+    scan -- "W: insert/update" --> media
+    scan -- "R: check dupes" --> media
+    scan -- "W: log scan" --> scan_hist
+    scan -- "R: get config" --> config_t
+
+    ls -- "R: list/count" --> media
+
+    search -- "W: insert" --> media
+    search -- "R: check dupes" --> media
+
+    info -- "R: get by ID/title" --> media
+    info -- "R: get tags" --> tags_t
+
+    suggest -- "R: random media" --> media
+
+    move -- "R: get media" --> media
+    move -- "W: update path" --> media
+    move -- "W: log move" --> move_hist
+    move -- "R: get config" --> config_t
+
+    rename -- "R: get media" --> media
+    rename -- "W: update path" --> media
+    rename -- "W: log move" --> move_hist
+
+    undo -- "R: get last move" --> move_hist
+    undo -- "W: mark undone" --> move_hist
+    undo -- "W: restore path" --> media
+
+    play -- "R: get by ID" --> media
+
+    stats -- "R: count/sizes" --> media
+    stats -- "R: genres" --> media
+
+    config -- "R: get value" --> config_t
+    config -- "W: set value" --> config_t
+
+    tag_add -- "R: get media" --> media
+    tag_add -- "W: insert tag" --> tags_t
+
+    tag_rm -- "R: get media" --> media
+    tag_rm -- "W: delete tag" --> tags_t
+
+    tag_ls -- "R: get media" --> media
+    tag_ls -- "R: get tags" --> tags_t
+
+    linkStyle 0,2,5,10,13,14,17,22 stroke:#ef4444,stroke-width:2px
+    linkStyle 1,3,4,6,7,8,9,11,12,15,16,18,19,20,21,23,24,25,26,27 stroke:#3b82f6,stroke-width:2px

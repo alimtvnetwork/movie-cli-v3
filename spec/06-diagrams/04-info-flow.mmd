@@ -1,0 +1,66 @@
+%% 04-info-flow.mmd — mahin movie info [id-or-title]
+%% Version: 1.1.0 | Updated: 2026-04-06
+
+flowchart TD
+    START([movie info id-or-title]) --> OPEN_DB[Open database]
+    OPEN_DB --> DB_OK{DB\nOK?}
+    DB_OK -->|No| ERR_DB[/Error: Database error/]
+    DB_OK -->|Yes| RESOLVE[resolveMediaByQuery\nby ID or title]
+
+    RESOLVE --> FOUND_LOCAL{Found\nlocally?}
+    FOUND_LOCAL -->|Yes| PRINT_LOCAL[/Print: Found in\nlocal library/]
+    PRINT_LOCAL --> SHOW_DETAIL[printMediaDetail\nfull metadata display]
+    SHOW_DETAIL --> DONE([End])
+
+    FOUND_LOCAL -->|No| GET_KEY[Read tmdb_api_key\nfrom config or env]
+    GET_KEY --> HAS_KEY{Key\nfound?}
+    HAS_KEY -->|No| ERR_KEY[/Error: No API key/]
+    HAS_KEY -->|Yes| TMDB_SEARCH[SearchMulti on TMDb\nfor query string]
+
+    TMDB_SEARCH --> TMDB_OK{Results\nfound?}
+    TMDB_OK -->|No| NOT_FOUND[/No results on TMDb either/]
+    TMDB_OK -->|Yes| PICK_FIRST[Pick first result\nmost relevant]
+
+    PICK_FIRST --> CHK_DUP[GetMediaByTmdbID\ncheck for duplicates]
+    CHK_DUP --> IS_DUP{Already\nin DB?}
+    IS_DUP -->|Yes| PRINT_EXISTING[/Already in your library/]
+    PRINT_EXISTING --> SHOW_EXISTING[printMediaDetail]
+    SHOW_EXISTING --> DONE
+
+    IS_DUP -->|No| BUILD[Build Media record\nfrom TMDb result]
+    BUILD --> TYPE{Media\ntype?}
+    TYPE -->|movie| FETCH_MOVIE[fetchMovieDetails\nIMDb ID, genres, credits]
+    TYPE -->|tv| FETCH_TV[fetchTVDetails\ngenres, credits]
+
+    FETCH_MOVIE --> POSTER
+    FETCH_TV --> POSTER{Poster\npath?}
+    POSTER -->|No| SAVE_DB
+    POSTER -->|Yes| DL_THUMB[Download poster\nto thumbnails dir]
+    DL_THUMB --> SAVE_DB[InsertMedia to DB]
+
+    SAVE_DB --> INSERT_OK{Insert\nOK?}
+    INSERT_OK -->|Yes| SAVED
+    INSERT_OK -->|No| TRY_UPDATE[UpdateMediaByTmdbID]
+    TRY_UPDATE --> UPD_OK{Update\nOK?}
+    UPD_OK -->|Yes| SAVED
+    UPD_OK -->|No| ERR_SAVE[/Error: DB error/]
+
+    SAVED[/Saved to your library!/] --> SHOW_NEW[printMediaDetail]
+    SHOW_NEW --> DONE
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef prompt fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+
+    class START,DONE entryExit
+    class OPEN_DB,RESOLVE,BUILD,SAVE_DB,TRY_UPDATE,PICK_FIRST,CHK_DUP,SHOW_DETAIL,SHOW_EXISTING,SHOW_NEW process
+    class DB_OK,FOUND_LOCAL,HAS_KEY,TMDB_OK,IS_DUP,TYPE,POSTER,INSERT_OK,UPD_OK decision
+    class PRINT_LOCAL,SAVED,PRINT_EXISTING success
+    class ERR_DB,ERR_KEY,ERR_SAVE error
+    class NOT_FOUND warning
+    class GET_KEY,TMDB_SEARCH,FETCH_MOVIE,FETCH_TV,DL_THUMB info

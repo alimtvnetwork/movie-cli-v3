@@ -1,0 +1,41 @@
+%% 10-stats-flow.mmd — mahin movie stats
+%% Version: 1.1.0 | Updated: 2026-04-06
+
+flowchart TD
+    A([movie stats]) --> B[Open DB]
+    B --> C[Count media by type:\nmovie, tv, total]
+    C --> D{Total = 0?}
+    D -->|yes| E[/No media in library/]
+    D -->|no| F[/Display counts:\nMovies, TV, Total/]
+
+    F --> G[Get top 10 genres]
+    G --> H{Genres found?}
+    H -->|yes| I[/Display genre bar chart/]
+    H -->|no| J[Skip genres]
+
+    I --> K[Load all media up to 10000]
+    J --> K
+    K --> L[Compute avg IMDb and TMDb ratings]
+    L --> M{IMDb ratings exist?}
+    M -->|yes| N[/Display avg IMDb rating/]
+    M -->|no| O[Skip IMDb]
+    N --> P{TMDb ratings exist?}
+    O --> P
+    P -->|yes| Q[/Display avg TMDb rating/]
+    P -->|no| R([Done])
+    Q --> R
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef prompt fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+
+    class A,R entryExit
+    class B,C,G,K,L,O,J process
+    class D,H,M,P decision
+    class F,I,N,Q success
+    class E warning

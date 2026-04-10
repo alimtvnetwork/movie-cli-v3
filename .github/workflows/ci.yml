@@ -1,0 +1,329 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ─── Gate: SHA deduplication ───────────────────────────────
+  sha-check:
+    name: SHA Check
+    runs-on: ubuntu-latest
+    outputs:
+      already-built: ${{ steps.cache-check.outputs.cache-hit }}
+    steps:
+      - name: Check SHA cache
+        id: cache-check
+        uses: actions/cache@v4
+        with:
+          path: /tmp/ci-passed
+          key: ci-passed-${{ github.sha }}
+          lookup-only: true
+
+  # ─── Lint ──────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: sha-check
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "✅ SHA ${{ github.sha }} already passed — skipping lint"
+
+      - uses: actions/checkout@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+
+      - uses: actions/setup-go@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Download modules
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: go mod download
+
+      - name: Go vet
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: go vet ./...
+
+      - name: golangci-lint
+        if: needs.sha-check.outputs.already-built != 'true'
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m
+
+  # ─── Vulnerability scan ────────────────────────────────────
+  vulncheck:
+    name: Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: sha-check
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "✅ SHA ${{ github.sha }} already passed — skipping vulncheck"
+
+      - uses: actions/checkout@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+
+      - uses: actions/setup-go@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Download modules
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: go mod download
+
+      - name: Install govulncheck
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+      - name: Run govulncheck
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: |
+          set +e
+          govulncheck ./... 2>&1 | tee /tmp/vulncheck.out
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            if grep "packages you import" /tmp/vulncheck.out | grep -qv "0 vulnerabilities in packages"; then
+              echo "::error::Third-party vulnerabilities detected"
+              exit 1
+            fi
+            echo "::warning::Only stdlib vulnerabilities found (no fix available in current Go version)"
+          fi
+
+  # ─── Tests (parallel matrix) ───────────────────────────────
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: [sha-check, lint, vulncheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: unit
+            packages: ./...
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "✅ SHA ${{ github.sha }} already passed — skipping tests"
+
+      - uses: actions/checkout@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+
+      - uses: actions/setup-go@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Download modules
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: go mod download
+
+      - name: Run tests
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: |
+          set -uo pipefail
+          set +e
+          go test ${{ matrix.packages }} -v -count=1 \
+            -coverprofile=coverage-${{ matrix.name }}.out \
+            -covermode=atomic 2>&1 | tee test-output.txt
+          exit_code=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$exit_code" -ne 0 ]; then
+            echo "========================================="
+            echo "  FAILED TESTS (${{ matrix.name }})"
+            echo "========================================="
+            grep -E -A 5 '^--- FAIL:' test-output.txt || true
+            echo "========================================="
+          fi
+
+          exit "$exit_code"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        with:
+          name: test-results-${{ matrix.name }}
+          path: |
+            test-output.txt
+            coverage-${{ matrix.name }}.out
+          retention-days: 7
+
+  # ─── Test summary + SHA cache write ────────────────────────
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [sha-check, test]
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "✅ SHA ${{ github.sha }} already passed"
+
+      - name: Download test results
+        if: needs.sha-check.outputs.already-built != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: results
+
+      - name: Summarize test results
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: |
+          overall=0
+          for dir in results/test-results-*; do
+            suite=$(basename "$dir" | sed 's/test-results-//')
+            file="$dir/test-output.txt"
+            [ ! -f "$file" ] && continue
+
+            pass=$(grep -c '^--- PASS:' "$file" || true)
+            fail=$(grep -c '^--- FAIL:' "$file" || true)
+
+            if [ "$fail" -gt 0 ]; then
+              overall=1
+              echo "❌ $suite: $fail failed, $pass passed"
+              grep -E -A 3 '^--- FAIL:' "$file" || true
+            else
+              echo "✅ $suite: $pass passed"
+            fi
+          done
+
+          # Coverage summary
+          if ls results/test-results-*/coverage-*.out 1>/dev/null 2>&1; then
+            echo ""
+            echo "📊 Coverage:"
+            for cov in results/test-results-*/coverage-*.out; do
+              [ ! -s "$cov" ] && continue
+              echo "  $(basename "$cov")"
+            done
+          fi
+
+          if [ "$overall" -ne 0 ]; then
+            echo "::error::Some test suites failed"
+            exit 1
+          fi
+          echo ""
+          echo "All test suites passed."
+
+      - name: Mark SHA as built
+        if: success() && needs.sha-check.outputs.already-built != 'true'
+        run: mkdir -p /tmp/ci-passed && echo "${{ github.sha }}" > /tmp/ci-passed/sha.txt
+
+      - name: Save SHA to cache
+        if: success() && needs.sha-check.outputs.already-built != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ci-passed
+          key: ci-passed-${{ github.sha }}
+
+  # ─── Cross-compiled builds (matrix) ────────────────────────
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    needs: [sha-check, test-summary]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows, arch: amd64, ext: .exe }
+          - { os: windows, arch: arm64, ext: .exe }
+          - { os: linux,   arch: amd64, ext: "" }
+          - { os: linux,   arch: arm64, ext: "" }
+          - { os: darwin,  arch: amd64, ext: "" }
+          - { os: darwin,  arch: arm64, ext: "" }
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "✅ SHA ${{ github.sha }} already passed — skipping build"
+
+      - uses: actions/checkout@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+
+      - uses: actions/setup-go@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Download modules
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: go mod download
+
+      - name: Embed icon (Windows only)
+        if: needs.sha-check.outputs.already-built != 'true' && matrix.os == 'windows'
+        run: |
+          go install github.com/tc-hib/go-winres@v0.3.3
+          go-winres init --icon assets/icon.ico
+
+      - name: Build binary
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: |
+          VERSION="dev-${GITHUB_SHA::10}"
+          LDFLAGS="-s -w \
+            -X 'github.com/mahin/mahin-cli-v2/version.Version=$VERSION' \
+            -X 'github.com/mahin/mahin-cli-v2/version.Commit=${GITHUB_SHA::10}' \
+            -X 'github.com/mahin/mahin-cli-v2/version.BuildDate=$(date -u +%Y-%m-%d)'"
+          OUTPUT="movie-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags "$LDFLAGS" -o "$OUTPUT" .
+          echo "Built: $OUTPUT ($(stat --format='%s' "$OUTPUT" | numfmt --to=iec --suffix=B))"
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        if: needs.sha-check.outputs.already-built != 'true'
+        with:
+          name: movie-${{ matrix.os }}-${{ matrix.arch }}
+          path: movie-*
+          retention-days: 14
+
+  # ─── Build summary ─────────────────────────────────────────
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [sha-check, build]
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "✅ SHA ${{ github.sha }} already passed"
+
+      - name: Download all binaries
+        if: needs.sha-check.outputs.already-built != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: movie-*
+          path: binaries
+
+      - name: Print build summary
+        if: needs.sha-check.outputs.already-built != 'true'
+        run: |
+          echo ""
+          echo "📦 Build artifacts:"
+          printf "  %-45s %s\n" "Binary" "Size"
+          printf "  %-45s %s\n" "-----" "----"
+          for dir in binaries/*; do
+            for file in "$dir"/*; do
+              [ ! -f "$file" ] && continue
+              name=$(basename "$file")
+              size=$(stat --format="%s" "$file")
+              human=$(numfmt --to=iec --suffix=B "$size")
+              printf "  %-45s %s\n" "$name" "$human"
+            done
+          done
+          echo ""
+          echo "✅ All builds complete."

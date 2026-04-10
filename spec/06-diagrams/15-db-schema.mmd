@@ -1,0 +1,63 @@
+%% 15-db-schema.mmd — SQLite database schema and table relationships
+%% Version: 1.0.0 | Updated: 2026-04-08
+
+erDiagram
+    media {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT title "NOT NULL"
+        TEXT clean_title "NOT NULL"
+        INTEGER year
+        TEXT type "movie | tv"
+        INTEGER tmdb_id "UNIQUE"
+        TEXT imdb_id
+        TEXT description
+        REAL imdb_rating
+        REAL tmdb_rating
+        REAL popularity
+        TEXT genre
+        TEXT director
+        TEXT cast_list
+        TEXT thumbnail_path
+        TEXT original_file_name
+        TEXT original_file_path
+        TEXT current_file_path
+        TEXT file_extension
+        INTEGER file_size
+        DATETIME scanned_at
+        DATETIME updated_at
+    }
+
+    move_history {
+        INTEGER id PK "AUTOINCREMENT"
+        INTEGER media_id FK "NOT NULL"
+        TEXT from_path "NOT NULL"
+        TEXT to_path "NOT NULL"
+        TEXT original_file_name
+        TEXT new_file_name
+        DATETIME moved_at
+        INTEGER undone "0 or 1"
+    }
+
+    tags {
+        INTEGER id PK "AUTOINCREMENT"
+        INTEGER media_id FK "NOT NULL"
+        TEXT tag "NOT NULL"
+        DATETIME created_at
+    }
+
+    scan_history {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT folder_path "NOT NULL"
+        INTEGER total_files
+        INTEGER movies_found
+        INTEGER tv_found
+        DATETIME scanned_at
+    }
+
+    config {
+        TEXT key PK
+        TEXT value "NOT NULL"
+    }
+
+    media ||--o{ move_history : "has moves"
+    media ||--o{ tags : "has tags"

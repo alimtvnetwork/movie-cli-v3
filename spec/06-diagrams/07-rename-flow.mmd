@@ -1,0 +1,46 @@
+%% 07-rename-flow.mmd — mahin movie rename
+%% Version: 1.1.0 | Updated: 2026-04-06
+
+flowchart TD
+    A([movie rename]) --> B[Open DB]
+    B --> C[Load all media up to 10000]
+    C --> D{Media found?}
+    D -->|no| E[/No media found/]
+    D -->|yes| F[For each media:\ncompare old vs clean name]
+
+    F --> G{Any files need renaming?}
+    G -->|no| H[/All files already clean/]
+    G -->|yes| I[Display rename preview list]
+
+    I --> J(Prompt: Rename all? y/N)
+    J -->|no| K[/Cancelled/]
+    J -->|yes| L[For each rename item]
+
+    L --> M[MoveFile old -> new path]
+    M --> N{Rename succeeded?}
+    N -->|no| O[/Log failure, continue/]
+    N -->|yes| P[Update media path in DB]
+    P --> Q[Insert move history]
+    Q --> R[Log success]
+
+    R --> S{More items?}
+    O --> S
+    S -->|yes| L
+    S -->|no| T[/Show summary:\nrenamed X/Y files/]
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef prompt fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+
+    class A entryExit
+    class B,C,F,L,M,P,Q,R,I process
+    class D,G,N,S decision
+    class T success
+    class E,O error
+    class H,K warning
+    class J prompt

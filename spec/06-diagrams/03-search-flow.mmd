@@ -1,0 +1,61 @@
+%% 03-search-flow.mmd — mahin movie search [name]
+%% Version: 1.1.0 | Updated: 2026-04-06
+
+flowchart TD
+    START([movie search name]) --> OPEN_DB[Open database]
+    OPEN_DB --> DB_OK{DB\nOK?}
+    DB_OK -->|No| ERR_DB[/Error: Database error/]
+    DB_OK -->|Yes| GET_KEY[Read tmdb_api_key\nfrom config or env]
+
+    GET_KEY --> HAS_KEY{Key\nfound?}
+    HAS_KEY -->|No| ERR_KEY[/Error: No API key.\nSet via config./]
+    HAS_KEY -->|Yes| SEARCH[SearchMulti query\non TMDb API]
+
+    SEARCH --> SEARCH_OK{Results\nfound?}
+    SEARCH_OK -->|No| NO_RESULTS[/No results found/]
+    SEARCH_OK -->|Yes| DISPLAY[Display up to 15 results:\ntitle, year, rating, type]
+
+    DISPLAY --> PROMPT(Prompt: Enter number\nto save, 0 to cancel)
+    PROMPT --> VALID{Valid\nchoice?}
+    VALID -->|No| CANCEL[/Cancelled/]
+    VALID -->|Yes| BUILD[Build Media record\nfrom selected result]
+
+    BUILD --> TYPE_CHECK{Media\ntype?}
+    TYPE_CHECK -->|movie| FETCH_MOVIE[fetchMovieDetails\nIMDb ID, genres, credits]
+    TYPE_CHECK -->|tv| FETCH_TV[fetchTVDetails\ngenres, credits, creators]
+
+    FETCH_MOVIE --> POSTER
+    FETCH_TV --> POSTER{Poster\npath?}
+    POSTER -->|No| SAVE_DB
+    POSTER -->|Yes| DL_THUMB[Download poster\nto thumbnails dir]
+    DL_THUMB --> SAVE_DB[InsertMedia to DB]
+
+    SAVE_DB --> INSERT_OK{Insert\nOK?}
+    INSERT_OK -->|Yes| PRINT_SAVED
+    INSERT_OK -->|No - duplicate| TRY_UPDATE{tmdb_id\n> 0?}
+    TRY_UPDATE -->|Yes| UPDATE[UpdateMediaByTmdbID]
+    TRY_UPDATE -->|No| ERR_INSERT[/Error: DB error/]
+    UPDATE --> UPDATE_OK{Update\nOK?}
+    UPDATE_OK -->|Yes| PRINT_UPDATED[/Updated existing record/]
+    UPDATE_OK -->|No| ERR_INSERT
+
+    PRINT_SAVED[/Saved to database!\nPrint full details/] --> DONE([End])
+    PRINT_UPDATED --> DONE
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef prompt fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+
+    class START,DONE entryExit
+    class OPEN_DB,BUILD,SAVE_DB,UPDATE,DISPLAY process
+    class DB_OK,HAS_KEY,SEARCH_OK,VALID,TYPE_CHECK,POSTER,INSERT_OK,TRY_UPDATE,UPDATE_OK decision
+    class PRINT_SAVED,PRINT_UPDATED success
+    class ERR_DB,ERR_KEY,ERR_INSERT error
+    class NO_RESULTS,CANCEL warning
+    class SEARCH,GET_KEY,FETCH_MOVIE,FETCH_TV,DL_THUMB info
+    class PROMPT prompt

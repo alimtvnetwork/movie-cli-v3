@@ -1,0 +1,84 @@
+%% 01-scan-flow.mmd — mahin movie scan [folder]
+%% Version: 1.1.0 | Updated: 2026-04-06
+
+flowchart TD
+    START([movie scan folder]) --> CHK_ARGS{Folder arg\nprovided?}
+
+    CHK_ARGS -->|Yes| USE_ARG[Use provided folder]
+    CHK_ARGS -->|No| CFG_LOOKUP[Read scan_dir\nfrom config]
+    CFG_LOOKUP --> HAS_CFG{Config\nfound?}
+    HAS_CFG -->|No| ERR_NO_DIR[/Error: No folder specified/]
+    HAS_CFG -->|Yes| USE_ARG
+
+    USE_ARG --> EXPAND_TILDE[Expand ~ to home dir]
+    EXPAND_TILDE --> DIR_EXISTS{Folder\nexists?}
+    DIR_EXISTS -->|No| ERR_NO_FOLDER[/Error: Folder not found/]
+    DIR_EXISTS -->|Yes| GET_API_KEY[Read tmdb_api_key\nfrom config or env]
+
+    GET_API_KEY --> HAS_KEY{API key\nfound?}
+    HAS_KEY -->|No| WARN_NO_KEY[/Warn: proceed\nwithout metadata/]
+    HAS_KEY -->|Yes| READ_DIR
+    WARN_NO_KEY --> READ_DIR[Read directory entries]
+
+    READ_DIR --> LOOP{Next\nentry?}
+    LOOP -->|No more| LOG_HISTORY[Insert scan history]
+    LOG_HISTORY --> SUMMARY[/Print scan summary/]
+    SUMMARY --> DONE([End])
+
+    LOOP -->|Yes| IS_DIR{Is\ndirectory?}
+    IS_DIR -->|Yes| FIND_VIDEO[Find first video\nin subdirectory]
+    IS_DIR -->|No| IS_VIDEO{Is video\nfile?}
+
+    FIND_VIDEO --> HAS_VIDEO{Video\nfound?}
+    HAS_VIDEO -->|No| LOOP
+    HAS_VIDEO -->|Yes| CLEAN
+    IS_VIDEO -->|No| LOOP
+    IS_VIDEO -->|Yes| CLEAN[Clean filename\nextract title + year + type]
+
+    CLEAN --> DUP_CHECK{Already in\nDB by path?}
+    DUP_CHECK -->|Yes| SKIP[Skip - increment counter]
+    SKIP --> LOOP
+    DUP_CHECK -->|No| BUILD_RECORD[Build Media record\nwith file metadata]
+
+    BUILD_RECORD --> HAS_API{API key\navailable?}
+    HAS_API -->|No| INSERT_DB
+    HAS_API -->|Yes| TMDB_SEARCH[SearchMulti\ntitle + year]
+
+    TMDB_SEARCH --> TMDB_FOUND{Results\nfound?}
+    TMDB_FOUND -->|No| WARN_NO_MATCH[/Warn: no TMDb match/]
+    WARN_NO_MATCH --> INSERT_DB
+    TMDB_FOUND -->|Yes| APPLY_META[Apply TMDb metadata\nrating, genres, overview]
+
+    APPLY_META --> FETCH_TYPE{Media\ntype?}
+    FETCH_TYPE -->|movie| FETCH_MOVIE[fetchMovieDetails\nIMDb ID, credits]
+    FETCH_TYPE -->|tv| FETCH_TV[fetchTVDetails\ncredits, creators]
+
+    FETCH_MOVIE --> DL_THUMB
+    FETCH_TV --> DL_THUMB{Poster\npath?}
+    DL_THUMB -->|No| INSERT_DB
+    DL_THUMB -->|Yes| SAVE_THUMB[Download poster\nto thumbnails dir]
+    SAVE_THUMB --> INSERT_DB[InsertMedia to DB]
+
+    INSERT_DB --> INSERT_OK{Insert\nOK?}
+    INSERT_OK -->|Yes| COUNT[Increment movie/tv counter]
+    INSERT_OK -->|No - duplicate| TRY_UPDATE[UpdateMediaByTmdbID]
+    TRY_UPDATE --> COUNT
+    COUNT --> LOOP
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef prompt fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+
+    class START,DONE entryExit
+    class USE_ARG,EXPAND_TILDE,READ_DIR,CLEAN,BUILD_RECORD,APPLY_META,SAVE_THUMB,INSERT_DB,COUNT,LOG_HISTORY,SKIP process
+    class CHK_ARGS,HAS_CFG,DIR_EXISTS,HAS_KEY,LOOP,IS_DIR,HAS_VIDEO,IS_VIDEO,DUP_CHECK,HAS_API,TMDB_FOUND,FETCH_TYPE,DL_THUMB,INSERT_OK decision
+    class SUMMARY,CFG_LOOKUP success
+    class ERR_NO_DIR,ERR_NO_FOLDER error
+    class WARN_NO_KEY,WARN_NO_MATCH warning
+    class GET_API_KEY,TMDB_SEARCH,FETCH_MOVIE,FETCH_TV,FIND_VIDEO info
+    class TRY_UPDATE process

@@ -1,0 +1,50 @@
+%% 14-cleaner-flow.mmd — How the cleaner package parses filenames into title, year, and type
+%% Version: 1.0.0 | Updated: 2026-04-08
+
+flowchart TD
+    START(["Input: raw filename"])
+    EXT["Split extension\nfilepath.Ext"]
+    NAME["Strip extension\nTrimSuffix"]
+    TV_CHECK{"tvPattern match?\nS01E02 / Season / Episode"}
+    TYPE_TV["Type = tv"]
+    TYPE_MOVIE["Type = movie"]
+    YEAR_EXTRACT["yearPattern extract\n19xx or 20xx"]
+    DOTS["Replace . and _ with spaces"]
+    JUNK["Remove junk patterns\nresolution, codec, group,\nlanguage, brackets"]
+    SPACES["Collapse multiple spaces\nTrimSpace"]
+    YEAR_CHECK{"Year found?"}
+    TRUNCATE["Truncate after year\nkeep title + year only"]
+    RESULT(["Result:\nCleanTitle, Year, Type, Extension"])
+
+    START --> EXT
+    EXT --> NAME
+    NAME --> TV_CHECK
+    TV_CHECK -->|yes| TYPE_TV
+    TV_CHECK -->|no| TYPE_MOVIE
+    TYPE_TV --> YEAR_EXTRACT
+    TYPE_MOVIE --> YEAR_EXTRACT
+    YEAR_EXTRACT --> DOTS
+    DOTS --> JUNK
+    JUNK --> SPACES
+    SPACES --> YEAR_CHECK
+    YEAR_CHECK -->|yes| TRUNCATE
+    YEAR_CHECK -->|no| RESULT
+    TRUNCATE --> RESULT
+
+    JUNK_DETAIL["Junk patterns removed:\n1080p 720p 2160p 4k\nbluray webrip web-dl dvdrip\nx264 x265 hevc aac dts\nrarbg yts yify eztv\nextended remastered\nmulti eng subs\n[...] (...) {...}"]
+
+    JUNK -.-> JUNK_DETAIL
+
+    classDef entryExit fill:#1e293b,stroke:#1e293b,color:#f1f5f9,stroke-width:2px
+    classDef process fill:#f1f5f9,stroke:#cbd5e1,color:#1e293b
+    classDef decision fill:#e2e8f0,stroke:#94a3b8,color:#1e293b
+    classDef success fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff
+    classDef warning fill:#f59e0b,stroke:#d97706,color:#ffffff
+
+    class START,RESULT entryExit
+    class EXT,NAME,DOTS,JUNK,SPACES,TRUNCATE process
+    class TV_CHECK,YEAR_CHECK decision
+    class TYPE_TV,TYPE_MOVIE info
+    class YEAR_EXTRACT success
+    class JUNK_DETAIL warning

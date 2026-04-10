@@ -1,0 +1,17 @@
+# Add these entries to your .gitignore
+# =====================================
+
+# Go binaries & runtime data
+movie-cli
+movie-cli.exe
+movie-cli-darwin-*
+movie-cli
+*.exe
+*.o
+*.a
+*.so
+*.dylib
+movie-cli-output/
+
+# TypeScript build cache
+*.tsbuildinfo
