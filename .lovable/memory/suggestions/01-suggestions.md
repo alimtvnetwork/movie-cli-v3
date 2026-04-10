@@ -28,6 +28,7 @@
 | S12 | Update README.md with full docs | 10-Apr-2026 | 620+ lines, all commands, install, build, project structure |
 | S11 | Add error handling spec | 10-Apr-2026 | TMDb rate limits, DB locks, offline mode, filesystem errors |
 | S10 | Add file size stats to `movie stats` | 10-Apr-2026 | Already implemented: total, largest, smallest, average in CLI + total in web UI |
+| S18 | Add `movie duplicates` command | 10-Apr-2026 | Detect by TMDb ID, filename, or file size — db/duplicates.go + cmd/movie_duplicates.go |
 
 ---
 
@@ -35,11 +36,20 @@
 
 ### P0–P2 — All Complete ✅
 
+### P2 — Medium Priority
+
+| # | Suggestion | Affected | Rationale |
+|---|-----------|----------|-----------|
+| S17 | Implement retry logic in TMDb client | `tmdb/client.go` | Rate-limit handling spec exists but no code |
+| S19 | Add `movie cleanup` command | `cmd/`, `db/` | Find stale DB entries where file no longer exists |
+| S21 | Apply error log spec to ci.yml | `.github/workflows/ci.yml` | Spec v2 written but not implemented |
+
 ### P3 — Low Priority
 
 | # | Suggestion | Affected | Rationale |
 |---|-----------|----------|-----------|
-| — | All P3 items completed | — | CI pipeline done, self-update spec done |
+| S20 | Integration tests for CI | `tests/`, `ci.yml` | No test job with SQLite fixtures |
+| S22 | Add `movie watch` / watchlist | `cmd/`, `db/` | Mark titles as to-watch vs watched |
 
 ---
 
