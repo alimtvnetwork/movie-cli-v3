@@ -22,6 +22,8 @@
 | S14 | JSON metadata per movie/TV on scan | 09-Apr-2026 | `cmd/movie_scan_json.go` |
 | S15 | Use `DiscoverByGenre` in suggest | 09-Apr-2026 | Genre-based discovery integrated |
 | S05 | Add confirmation prompt to `movie undo` | 10-Apr-2026 | Already implemented with `[y/N]` prompt |
+| S16 | CI pipeline (lint, test, vuln scan) | 10-Apr-2026 | ci.yml + vulncheck.yml + spec/12-ci-cd-pipeline/ |
+| S06 | Add GIVEN/WHEN/THEN acceptance criteria | 10-Apr-2026 | 16 ACs covering all commands + export + batch move |
 
 ---
 
@@ -33,7 +35,6 @@
 
 | # | Suggestion | Affected | Rationale |
 |---|-----------|----------|-----------|
-| S06 | Add GIVEN/WHEN/THEN acceptance criteria to spec | `spec/` | AI cannot self-validate without testable criteria |
 | S07 | Document shared helper locations in code comments | `cmd/movie_info.go`, `cmd/movie_resolve.go` | Prevent duplicate code creation by AI |
 
 ### P2 — Medium Priority
@@ -48,7 +49,7 @@
 
 | # | Suggestion | Affected | Rationale |
 |---|-----------|----------|-----------|
-| S16 | CI pipeline (lint, test, vuln scan) | `.github/workflows/ci.yml` | No automated quality checks |
+| — | All P3 items completed | — | CI pipeline done, self-update spec done |
 
 ---
 
