@@ -27,18 +27,13 @@
 | S07 | Document shared helper locations | 10-Apr-2026 | Annotated movie_info.go, movie_resolve.go, movie_move_helpers.go, movie_scan_json.go |
 | S12 | Update README.md with full docs | 10-Apr-2026 | 620+ lines, all commands, install, build, project structure |
 | S11 | Add error handling spec | 10-Apr-2026 | TMDb rate limits, DB locks, offline mode, filesystem errors |
+| S10 | Add file size stats to `movie stats` | 10-Apr-2026 | Already implemented: total, largest, smallest, average in CLI + total in web UI |
 
 ---
 
 ## 🔲 Open — Priority Order
 
-### P0–P1 — All Complete ✅
-
-### P2 — Medium Priority
-
-| # | Suggestion | Affected | Rationale |
-|---|-----------|----------|-----------|
-| S10 | Add file size stats to `movie stats` | `cmd/movie_stats.go` | Total size, average size, largest file |
+### P0–P2 — All Complete ✅
 
 ### P3 — Low Priority
 
