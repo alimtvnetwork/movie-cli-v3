@@ -2,7 +2,7 @@
 # install.sh — One-step bootstrap: clone (if needed), build, and deploy movie CLI.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/mahin/movie-cli-v2/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/movie-cli-v3/main/install.sh | bash
 #   bash install.sh
 #   bash install.sh --dir ~/bin
 #
@@ -11,8 +11,8 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────
-REPO_NAME="movie-cli-v2"
-REPO_URL="https://github.com/mahin/movie-cli-v2.git"
+REPO_NAME="movie-cli-v3"
+REPO_URL="https://github.com/alimtvnetwork/movie-cli-v3.git"
 BINARY_NAME="movie"
 DEFAULT_INSTALL_DIR="$HOME/.local/bin"
 INSTALL_DIR=""
@@ -181,14 +181,14 @@ case ":$PATH:" in
         ;;
 esac
 
-if command -v "$BINARY_NAME" >/dev/null 2>&1; then
-    VER_OUTPUT="$("$BINARY_NAME" version 2>&1 || true)"
+if [[ -x "$INSTALL_DIR/$BINARY_NAME" ]]; then
+    VER_OUTPUT="$("$INSTALL_DIR/$BINARY_NAME" version 2>&1 || true)"
     ok "$BINARY_NAME is ready"
     echo "$VER_OUTPUT" | while IFS= read -r line; do
         printf "       %s\n" "$line"
     done
 else
-    die "'$BINARY_NAME' not found after install" "Ensure $INSTALL_DIR is in your PATH"
+    die "'$INSTALL_DIR/$BINARY_NAME' not found after install" "Check that the install directory is writable and on your PATH"
 fi
 
 # ── Done ──────────────────────────────────────────────────────
