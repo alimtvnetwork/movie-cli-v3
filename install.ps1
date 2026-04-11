@@ -46,6 +46,43 @@ function Write-ErrorAndExit {
     exit 1
 }
 
+function Get-BinaryName {
+    if ($env:OS -eq "Windows_NT") { return "movie.exe" }
+    return "movie"
+}
+
+function Resolve-InstalledBinaryPath {
+    param([string]$RepoRoot, [string]$ExplicitDeployPath = "")
+
+    $binaryName = Get-BinaryName
+    $candidateDirs = @()
+
+    if ($ExplicitDeployPath) {
+        $candidateDirs += $ExplicitDeployPath
+    }
+
+    $configPath = Join-Path $RepoRoot "powershell.json"
+    if (Test-Path $configPath) {
+        try {
+            $config = Get-Content $configPath -Raw | ConvertFrom-Json
+            if ($config.deployPath) {
+                $candidateDirs += [string]$config.deployPath
+            }
+        } catch {
+            Write-Info "Could not parse powershell.json; falling back to PATH-based verification"
+        }
+    }
+
+    foreach ($dir in ($candidateDirs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)) {
+        $candidate = Join-Path $dir $binaryName
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 # -- Pre-flight checks -----------------------------------------
 
 Write-Banner
@@ -79,8 +116,8 @@ Write-Host ""
 Write-Host " [2/4] Locating repository" -ForegroundColor Magenta
 Write-Host (" " + ("-" * 50)) -ForegroundColor DarkGray
 
-$RepoName = "movie-cli-v2"
-$RepoUrl  = "https://github.com/movie/movie-cli-v2.git"
+$RepoName = "movie-cli-v3"
+$RepoUrl  = "https://github.com/alimtvnetwork/movie-cli-v3.git"
 
 # Check if we're already inside the repo
 $inRepo = (Test-Path "go.mod") -and (Test-Path "run.ps1")
@@ -146,15 +183,39 @@ Write-Host " [4/4] Verifying installation" -ForegroundColor Magenta
 Write-Host (" " + ("-" * 50)) -ForegroundColor DarkGray
 
 $prevPref = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-$verOutput = movie version 2>&1
-$verExit = $LASTEXITCODE
+$resolvedBinaryPath = $null
+$verOutput = $null
+$verExit = 1
+
+$movieCommand = Get-Command movie -ErrorAction SilentlyContinue
+if ($movieCommand) {
+    $verOutput = movie version 2>&1
+    $verExit = $LASTEXITCODE
+} else {
+    $resolvedBinaryPath = Resolve-InstalledBinaryPath -RepoRoot $RepoRoot -ExplicitDeployPath $DeployPath
+    if ($resolvedBinaryPath) {
+        Write-Info "movie is not yet on PATH for this session; verifying via $resolvedBinaryPath"
+        $verOutput = & $resolvedBinaryPath version 2>&1
+        $verExit = $LASTEXITCODE
+    }
+}
 $ErrorActionPreference = $prevPref
 
 if ($verExit -eq 0) {
-    Write-Ok "movie is ready: $("$verOutput".Trim())"
+    Write-Ok ("movie is ready: {0}" -f (($verOutput | Out-String).Trim()))
+    if ($resolvedBinaryPath) {
+        Write-Info "Open a new PowerShell window or add the install directory to PATH to run 'movie' directly"
+    }
 } else {
-    foreach ($line in $verOutput) { Write-Host "    $line" -ForegroundColor Red }
-    Write-ErrorAndExit "Verification failed — 'movie version' returned exit code $verExit" "Add the deploy directory to your PATH, then try again"
+    if ($verOutput) {
+        foreach ($line in $verOutput) { Write-Host "    $line" -ForegroundColor Red }
+    }
+    $hint = if ($resolvedBinaryPath) {
+        "Binary installed at $resolvedBinaryPath. Open a new PowerShell window or add its directory to PATH, then try again"
+    } else {
+        "Add the deploy directory to your PATH, then try again"
+    }
+    Write-ErrorAndExit "Verification failed — the installed binary could not be executed" $hint
 }
 
 Write-Host ""

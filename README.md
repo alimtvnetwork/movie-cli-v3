@@ -6,12 +6,12 @@
 
 **Personal movie & TV show library manager — from the terminal**
 
-[![CI](https://github.com/mahin/movie-cli-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/mahin/movie-cli-v2/actions/workflows/ci.yml)
-[![GitHub Release](https://img.shields.io/github/v/release/mahin/movie-cli-v2?style=flat-square&label=version)](https://github.com/mahin/movie-cli-v2/releases)
+[![CI](https://github.com/alimtvnetwork/movie-cli-v3/actions/workflows/ci.yml/badge.svg)](https://github.com/alimtvnetwork/movie-cli-v3/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/alimtvnetwork/movie-cli-v3?style=flat-square&label=version)](https://github.com/alimtvnetwork/movie-cli-v3/releases)
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey?style=flat-square)](https://github.com/mahin/movie-cli-v2)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey?style=flat-square)](https://github.com/alimtvnetwork/movie-cli-v3)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![License](https://img.shields.io/badge/license-Private-red?style=flat-square)](https://github.com/mahin/movie-cli-v2)
+[![License](https://img.shields.io/badge/license-Private-red?style=flat-square)](https://github.com/alimtvnetwork/movie-cli-v3)
 
 _Scan folders, clean filenames, fetch TMDb metadata, organize files, and track your collection._
 
@@ -29,12 +29,12 @@ _Scan folders, clean filenames, fetch TMDb metadata, organize files, and track y
 
 ```
 # Windows (PowerShell)
-irm https://github.com/mahin/movie-cli-v2/releases/latest/download/install.ps1 | iex
+irm https://github.com/alimtvnetwork/movie-cli-v3/releases/latest/download/install.ps1 | iex
 ```
 
 ```
 # Linux / macOS
-curl -fsSL https://github.com/mahin/movie-cli-v2/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/alimtvnetwork/movie-cli-v3/releases/latest/download/install.sh | bash
 ```
 
 ### Set up & scan
@@ -190,14 +190,26 @@ $ movie suggest 5
 **Windows (PowerShell):**
 
 ```powershell
-irm https://github.com/mahin/movie-cli-v2/releases/latest/download/install.ps1 | iex
+irm https://github.com/alimtvnetwork/movie-cli-v3/releases/latest/download/install.ps1 | iex
 ```
 
 **Linux / macOS (Bash):**
 
 ```bash
-curl -fsSL https://github.com/mahin/movie-cli-v2/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/alimtvnetwork/movie-cli-v3/releases/latest/download/install.sh | bash
 ```
+
+To pin a specific release, replace `latest/download` with `download/vX.Y.Z`:
+
+```powershell
+irm https://github.com/alimtvnetwork/movie-cli-v3/releases/download/v1.0.0/install.ps1 | iex
+```
+
+```bash
+curl -fsSL https://github.com/alimtvnetwork/movie-cli-v3/releases/download/v1.0.0/install.sh | bash
+```
+
+> These one-liners use the installer assets attached to each GitHub Release. The repo-root `install.ps1` and `install.sh` are source bootstrap scripts for local builds.
 
 ### Installer Options
 
@@ -228,8 +240,8 @@ curl -fsSL https://github.com/mahin/movie-cli-v2/releases/latest/download/instal
 | **PowerShell** | 5.1+ (Win) / 7+ (Unix) | `$PSVersionTable.PSVersion` |
 
 ```bash
-git clone https://github.com/mahin/movie-cli-v2.git
-cd movie-cli-v2
+git clone https://github.com/alimtvnetwork/movie-cli-v3.git
+cd movie-cli-v3
 pwsh run.ps1
 ```
 
@@ -478,7 +490,7 @@ See [spec/12-ci-cd-pipeline/02-release-pipeline.md](spec/12-ci-cd-pipeline/02-re
 </div>
 
 ```
-movie-cli-v2/
+movie-cli-v3/
 ├── main.go                        # Entry point
 ├── cmd/                           # Cobra commands (one file per command)
 │   ├── root.go                    # Root command, registers subcommands
@@ -572,8 +584,8 @@ Contributions are welcome! Here's how to get started:
 ### Development Setup
 
 ```bash
-git clone https://github.com/mahin/movie-cli-v2.git
-cd movie-cli-v2
+git clone https://github.com/alimtvnetwork/movie-cli-v3.git
+cd movie-cli-v3
 make tidy
 make build
 ```
