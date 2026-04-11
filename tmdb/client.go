@@ -259,19 +259,46 @@ func PosterURL(path string) string {
 	return imageBaseURL + path
 }
 
-func (c *Client) get(url string, target interface{}) error {
-	resp, err := c.HTTPClient.Get(url)
-	if err != nil {
-		return fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
+// MaxRetries is the number of retry attempts for rate-limited requests.
+const MaxRetries = 3
 
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("TMDb API error %d: %s", resp.StatusCode, string(body))
-	}
+func (c *Client) get(reqURL string, target interface{}) error {
+	var lastErr error
+	for attempt := 0; attempt <= MaxRetries; attempt++ {
+		resp, err := c.HTTPClient.Get(reqURL)
+		if err != nil {
+			lastErr = fmt.Errorf("HTTP request failed: %w", err)
+			backoff(attempt)
+			continue
+		}
 
-	return json.NewDecoder(resp.Body).Decode(target)
+		if resp.StatusCode == 429 {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("TMDb rate limit (429)")
+			backoff(attempt)
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return fmt.Errorf("TMDb API error %d: %s", resp.StatusCode, string(body))
+		}
+
+		err = json.NewDecoder(resp.Body).Decode(target)
+		resp.Body.Close()
+		return err
+	}
+	return fmt.Errorf("TMDb request failed after %d retries: %w", MaxRetries, lastErr)
+}
+
+// backoff sleeps for exponential duration: 1s, 2s, 4s, ...
+func backoff(attempt int) {
+	if attempt >= MaxRetries {
+		return
+	}
+	d := time.Duration(1<<uint(attempt)) * time.Second
+	time.Sleep(d)
 }
 
 // genreMap maps TMDb genre IDs to names (combined movie + TV).

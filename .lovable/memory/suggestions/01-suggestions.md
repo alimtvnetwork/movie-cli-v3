@@ -37,12 +37,6 @@
 
 ## 🔲 Open — Priority Order
 
-### P2 — Medium Priority
-
-| # | Suggestion | Affected | Rationale |
-|---|-----------|----------|-----------|
-| S17 | Implement retry logic in TMDb client | `tmdb/client.go` | Rate-limit handling spec exists but no code |
-
 ### P3 — Low Priority
 
 | # | Suggestion | Affected | Rationale |
@@ -51,4 +45,4 @@
 
 ---
 
-*Tracker updated: 10-Apr-2026*
+*Tracker updated: 11-Apr-2026*
