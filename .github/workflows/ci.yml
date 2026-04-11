@@ -210,6 +210,8 @@ jobs:
         include:
           - name: unit
             packages: ./...
+          - name: integration
+            packages: ./db/...
     steps:
       - name: Already validated
         if: needs.sha-check.outputs.already-built == 'true'
