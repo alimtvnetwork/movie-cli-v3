@@ -185,6 +185,43 @@ func (c *Client) GetTVCredits(tmdbID int) (*Credits, error) {
 	return &cr, nil
 }
 
+// GetMovieVideos returns videos (trailers, teasers) for a movie.
+func (c *Client) GetMovieVideos(tmdbID int) ([]VideoResult, error) {
+	u := fmt.Sprintf("%s/movie/%d/videos?api_key=%s", baseURL, tmdbID, c.APIKey)
+	var resp videosResponse
+	if err := c.get(u, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Results, nil
+}
+
+// GetTVVideos returns videos (trailers, teasers) for a TV show.
+func (c *Client) GetTVVideos(tmdbID int) ([]VideoResult, error) {
+	u := fmt.Sprintf("%s/tv/%d/videos?api_key=%s", baseURL, tmdbID, c.APIKey)
+	var resp videosResponse
+	if err := c.get(u, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Results, nil
+}
+
+// TrailerURL finds the best YouTube trailer URL from a list of videos.
+func TrailerURL(videos []VideoResult) string {
+	// Prefer official trailer on YouTube
+	for _, v := range videos {
+		if v.Site == "YouTube" && v.Type == "Trailer" {
+			return "https://www.youtube.com/watch?v=" + v.Key
+		}
+	}
+	// Fall back to any YouTube video
+	for _, v := range videos {
+		if v.Site == "YouTube" {
+			return "https://www.youtube.com/watch?v=" + v.Key
+		}
+	}
+	return ""
+}
+
 // DownloadPoster downloads a poster image and saves it to dst.
 func (c *Client) DownloadPoster(posterPath, dst string) error {
 	if posterPath == "" {

@@ -145,6 +145,9 @@ func printMediaDetail(m *db.Media) {
 
 	fmt.Println("╔══════════════════════════════════════════════════════════╗")
 	fmt.Printf("║  %s\n", m.Title)
+	if m.Tagline != "" {
+		fmt.Printf("║  \"%s\"\n", m.Tagline)
+	}
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
@@ -152,6 +155,13 @@ func printMediaDetail(m *db.Media) {
 		fmt.Printf("  📅 Year:        %d\n", m.Year)
 	}
 	fmt.Printf("  🏷️  Type:        %s\n", typeIcon)
+
+	if m.Runtime > 0 {
+		fmt.Printf("  ⏱️  Runtime:     %d min\n", m.Runtime)
+	}
+	if m.Language != "" {
+		fmt.Printf("  🌐 Language:    %s\n", strings.ToUpper(m.Language))
+	}
 
 	if m.ImdbRating > 0 {
 		fmt.Printf("  ⭐ IMDb:        %.1f\n", m.ImdbRating)
@@ -173,13 +183,24 @@ func printMediaDetail(m *db.Media) {
 		fmt.Printf("  👥 Cast:        %s\n", m.CastList)
 	}
 
+	if m.Budget > 0 {
+		fmt.Printf("  💰 Budget:      $%s\n", formatMoney(m.Budget))
+	}
+	if m.Revenue > 0 {
+		fmt.Printf("  💵 Revenue:     $%s\n", formatMoney(m.Revenue))
+	}
+
 	if m.Description != "" {
 		fmt.Println()
 		fmt.Printf("  📝 %s\n", m.Description)
 	}
 
-	if m.ThumbnailPath != "" {
+	if m.TrailerURL != "" {
 		fmt.Println()
+		fmt.Printf("  🎥 Trailer:     %s\n", m.TrailerURL)
+	}
+
+	if m.ThumbnailPath != "" {
 		fmt.Printf("  🖼️  Thumbnail:   %s\n", m.ThumbnailPath)
 	}
 
@@ -187,6 +208,22 @@ func printMediaDetail(m *db.Media) {
 		fmt.Println()
 		fmt.Printf("  📁 File:        %s\n", m.CurrentFilePath)
 	}
+}
+
+// formatMoney formats an int64 as a human-readable money string (e.g. 1,234,567).
+func formatMoney(n int64) string {
+	s := fmt.Sprintf("%d", n)
+	if len(s) <= 3 {
+		return s
+	}
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
 }
 
 func capitalize(s string) string {

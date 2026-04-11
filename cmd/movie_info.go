@@ -165,12 +165,17 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	printMediaDetail(m)
 }
 
-// fetchMovieDetails populates a Media record with TMDb movie details + credits.
+// fetchMovieDetails populates a Media record with TMDb movie details + credits + videos.
 func fetchMovieDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 	details, detailErr := client.GetMovieDetails(tmdbID)
 	if detailErr == nil {
 		m.ImdbID = details.ImdbID
 		m.Title = details.Title
+		m.Runtime = details.Runtime
+		m.Language = details.OriginalLanguage
+		m.Budget = details.Budget
+		m.Revenue = details.Revenue
+		m.Tagline = details.Tagline
 		genres := make([]string, len(details.Genres))
 		for i, g := range details.Genres {
 			genres[i] = g.Name
@@ -196,13 +201,23 @@ func fetchMovieDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 		}
 		m.CastList = strings.Join(castNames, ", ")
 	}
+
+	videos, vidErr := client.GetMovieVideos(tmdbID)
+	if vidErr == nil {
+		m.TrailerURL = tmdb.TrailerURL(videos)
+	}
 }
 
-// fetchTVDetails populates a Media record with TMDb TV details + credits.
+// fetchTVDetails populates a Media record with TMDb TV details + credits + videos.
 func fetchTVDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 	details, detailErr := client.GetTVDetails(tmdbID)
 	if detailErr == nil {
 		m.Title = details.Name
+		m.Language = details.OriginalLanguage
+		m.Tagline = details.Tagline
+		if len(details.EpisodeRunTime) > 0 {
+			m.Runtime = details.EpisodeRunTime[0]
+		}
 		genres := make([]string, len(details.Genres))
 		for i, g := range details.Genres {
 			genres[i] = g.Name
@@ -230,5 +245,10 @@ func fetchTVDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 			castNames = append(castNames, c.Name)
 		}
 		m.CastList = strings.Join(castNames, ", ")
+	}
+
+	videos, vidErr := client.GetTVVideos(tmdbID)
+	if vidErr == nil {
+		m.TrailerURL = tmdb.TrailerURL(videos)
 	}
 }
