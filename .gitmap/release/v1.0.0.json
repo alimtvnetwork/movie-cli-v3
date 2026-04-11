@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "branch": "release/v1.0.0",
   "sourceBranch": "main",
-  "commit": "3f3b94710e0b36bdad35e79ea9eb30dcfc26968e",
+  "commit": "06d8adcd0057f8d1de0f34262d47ea4534631251",
   "tag": "v1.0.0",
   "assets": [],
   "changelog": [
@@ -26,6 +26,6 @@
   ],
   "draft": false,
   "preRelease": false,
-  "createdAt": "2026-04-09T22:41:40Z",
+  "createdAt": "2026-04-11T17:31:45Z",
   "isLatest": false
 }
