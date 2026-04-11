@@ -31,6 +31,7 @@
 | S18 | Add `movie duplicates` command | 10-Apr-2026 | Detect by TMDb ID, filename, or file size — db/duplicates.go + cmd/movie_duplicates.go |
 | S21 | Apply error log spec v2 to ci.yml | 10-Apr-2026 | clear-logs job, per-stage .github/logs/errors/*.log, summary.log assembly |
 | S19 | Add `movie cleanup` command | 10-Apr-2026 | Find/remove stale DB entries — db/cleanup.go + cmd/movie_cleanup.go |
+| S22 | Add `movie watch` / watchlist | 11-Apr-2026 | to-watch/watched tracking — db/watchlist.go + cmd/movie_watch.go |
 
 ---
 
@@ -47,7 +48,6 @@
 | # | Suggestion | Affected | Rationale |
 |---|-----------|----------|-----------|
 | S20 | Integration tests for CI | `tests/`, `ci.yml` | No test job with SQLite fixtures |
-| S22 | Add `movie watch` / watchlist | `cmd/`, `db/` | Mark titles as to-watch vs watched |
 
 ---
 

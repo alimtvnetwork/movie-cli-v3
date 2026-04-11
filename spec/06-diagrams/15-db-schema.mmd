@@ -59,5 +59,18 @@ erDiagram
         TEXT value "NOT NULL"
     }
 
+    watchlist {
+        INTEGER id PK "AUTOINCREMENT"
+        INTEGER media_id FK "NULLABLE"
+        INTEGER tmdb_id "UNIQUE, NOT NULL"
+        TEXT title "NOT NULL"
+        INTEGER year
+        TEXT type "movie | tv"
+        TEXT status "to-watch | watched"
+        DATETIME added_at
+        DATETIME watched_at
+    }
+
     media ||--o{ move_history : "has moves"
     media ||--o{ tags : "has tags"
+    media ||--o{ watchlist : "tracked in"
