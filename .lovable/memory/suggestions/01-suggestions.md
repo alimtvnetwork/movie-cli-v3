@@ -32,6 +32,7 @@
 | S21 | Apply error log spec v2 to ci.yml | 10-Apr-2026 | clear-logs job, per-stage .github/logs/errors/*.log, summary.log assembly |
 | S19 | Add `movie cleanup` command | 10-Apr-2026 | Find/remove stale DB entries — db/cleanup.go + cmd/movie_cleanup.go |
 | S22 | Add `movie watch` / watchlist | 11-Apr-2026 | to-watch/watched tracking — db/watchlist.go + cmd/movie_watch.go |
+| S17 | Retry logic with exponential backoff | 11-Apr-2026 | 429 rate-limit handling in tmdb/client.go get() — 3 retries, 1s/2s/4s backoff |
 
 ---
 
