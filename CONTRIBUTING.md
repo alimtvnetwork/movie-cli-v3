@@ -32,8 +32,8 @@ Thank you for your interest in contributing! This guide covers everything you ne
 
 ```bash
 # Fork the repo on GitHub, then:
-git clone https://github.com/<your-username>/movie-cli-v2.git
-cd movie-cli-v2
+git clone https://github.com/<your-username>/movie-cli-v3.git
+cd movie-cli-v3
 go mod tidy
 make build
 ```
@@ -214,7 +214,7 @@ Include:
 ## Architecture Overview
 
 ```
-movie-cli-v2/
+movie-cli-v3/
 ├── main.go              # Entry point
 ├── cmd/                  # One file per CLI command
 │   ├── scan.go
@@ -297,6 +297,22 @@ git push origin v1.4.0
 - Breaking changes bump the **major** version
 
 See [Release Pipeline Spec](spec/pipeline/01-release-pipeline.md) for details.
+
+---
+
+## Maintainer
+
+### [Md. Alim Ul Karim](https://www.google.com/search?q=alim+ul+karim)
+
+**[Creator & Lead Architect](https://alimkarim.com)** | [Chief Software Engineer](https://www.google.com/search?q=alim+ul+karim), [Riseup Asia LLC](https://riseup-asia.com)
+
+|  |  |
+|---|---|
+| **Website** | [alimkarim.com](https://alimkarim.com/) · [my.alimkarim.com](https://my.alimkarim.com/) |
+| **LinkedIn** | [linkedin.com/in/alimkarim](https://linkedin.com/in/alimkarim) |
+| **Stack Overflow** | [stackoverflow.com/users/361646/alim-ul-karim](https://stackoverflow.com/users/361646/alim-ul-karim) |
+| **Google** | [Alim Ul Karim](https://www.google.com/search?q=Alim+Ul+Karim) |
+| **Role** | Chief Software Engineer, [Riseup Asia LLC](https://riseup-asia.com) |
 
 ---
 
