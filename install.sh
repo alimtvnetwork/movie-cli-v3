@@ -107,9 +107,9 @@ COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
 BUILD_DATE="$(date -u +%Y-%m-%d)"
 
 LDFLAGS="-s -w \
-  -X 'github.com/mahin/movie-cli-v2/version.Version=$VERSION' \
-  -X 'github.com/mahin/movie-cli-v2/version.Commit=$COMMIT' \
-  -X 'github.com/mahin/movie-cli-v2/version.BuildDate=$BUILD_DATE'"
+  -X 'github.com/alimtvnetwork/movie-cli-v3/version.Version=$VERSION' \
+  -X 'github.com/alimtvnetwork/movie-cli-v3/version.Commit=$COMMIT' \
+  -X 'github.com/alimtvnetwork/movie-cli-v3/version.BuildDate=$BUILD_DATE'"
 
 # Detect OS/arch
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
