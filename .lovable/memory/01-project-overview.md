@@ -1,6 +1,6 @@
 # Project Overview
 
-> **Last Updated**: 10-Apr-2026
+> **Last Updated**: 12-Apr-2026
 
 ## Project
 
@@ -8,7 +8,7 @@
 - **Type**: Go CLI application (NOT a web app)
 - **Binary**: `mahin`
 - **Language**: Go 1.22
-- **Module**: `github.com/mahin/mahin-cli-v2`
+- **Module**: `github.com/alimtvnetwork/movie-cli-v3`
 - **Framework**: Cobra (CLI), SQLite (storage), TMDb API (metadata)
 
 ## Purpose
