@@ -47,13 +47,19 @@ type exportMediaJSON struct {
 	OriginalFilePath string  `json:"original_file_path,omitempty"`
 	CurrentFilePath  string  `json:"current_file_path,omitempty"`
 	FileExtension    string  `json:"file_extension,omitempty"`
+	Language         string  `json:"language,omitempty"`
+	TrailerURL       string  `json:"trailer_url,omitempty"`
+	Tagline          string  `json:"tagline,omitempty"`
 	ID               int64   `json:"id"`
 	FileSize         int64   `json:"file_size,omitempty"`
+	Budget           int64   `json:"budget,omitempty"`
+	Revenue          int64   `json:"revenue,omitempty"`
 	ImdbRating       float64 `json:"imdb_rating,omitempty"`
 	TmdbRating       float64 `json:"tmdb_rating,omitempty"`
 	Popularity       float64 `json:"popularity,omitempty"`
 	Year             int     `json:"year"`
 	TmdbID           int     `json:"tmdb_id"`
+	Runtime          int     `json:"runtime,omitempty"`
 }
 
 func toExportMediaJSON(m db.Media) exportMediaJSON {
@@ -65,7 +71,9 @@ func toExportMediaJSON(m db.Media) exportMediaJSON {
 		CastList: m.CastList, ThumbnailPath: m.ThumbnailPath,
 		OriginalFileName: m.OriginalFileName, OriginalFilePath: m.OriginalFilePath,
 		CurrentFilePath: m.CurrentFilePath, FileExtension: m.FileExtension,
-		FileSize: m.FileSize,
+		FileSize: m.FileSize, Runtime: m.Runtime, Language: m.Language,
+		Budget: m.Budget, Revenue: m.Revenue, TrailerURL: m.TrailerURL,
+		Tagline: m.Tagline,
 	}
 }
 

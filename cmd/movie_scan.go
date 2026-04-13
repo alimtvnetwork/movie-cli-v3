@@ -38,7 +38,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		scanDir = args[0]
 	} else {
 		scanDir, err = database.GetConfig("scan_dir")
-		if err != nil {
+		if err != nil && err.Error() != "sql: no rows in result set" {
 			fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", err)
 		}
 		if scanDir == "" {
@@ -51,8 +51,8 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	if strings.HasPrefix(scanDir, "~") {
 		home, homeErr := os.UserHomeDir()
 		if homeErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot determine home directory: %v\n", homeErr)
-		return
+			fmt.Fprintf(os.Stderr, "❌ Cannot determine home directory: %v\n", homeErr)
+			return
 		}
 		scanDir = filepath.Join(home, scanDir[1:])
 	}
@@ -66,7 +66,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 
 	// Get TMDb API key
 	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
-	if cfgErr != nil {
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
 	}
 	if apiKey == "" {

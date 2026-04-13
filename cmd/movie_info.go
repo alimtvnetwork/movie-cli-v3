@@ -65,7 +65,7 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	fmt.Printf("🔎 Not found locally. Searching TMDb for: %s\n\n", query)
 
 	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
-	if cfgErr != nil {
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
 	}
 	if apiKey == "" {
