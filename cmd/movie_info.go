@@ -4,16 +4,8 @@
 // Checks local DB first; if not found by title, falls back to TMDb API,
 // fetches full details, stores in DB, then displays.
 //
-// -- Shared helpers exported from this file --
-//
-//	fetchMovieDetails(client, tmdbID, m)  — populate Media with TMDb movie details + credits
-//	fetchTVDetails(client, tmdbID, m)     — populate Media with TMDb TV details + credits
-//
-// Consumers: movie_scan.go (scan + metadata fetch), movie_info.go (info fallback)
-//
-// These helpers centralize all TMDb detail+credit fetching so that scan
-// and info share identical enrichment logic.  Any change to field mapping
-// or credit extraction should happen here only.
+// Shared TMDb fetch helpers (fetchMovieDetails, fetchTVDetails) live in
+// movie_fetch_details.go.
 package cmd
 
 import (
@@ -196,8 +188,6 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	}
 }
 
-// fetchMovieDetails populates a Media record with TMDb movie details + credits + videos.
-func fetchMovieDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 	details, detailErr := client.GetMovieDetails(tmdbID)
 	if detailErr == nil {
 		m.ImdbID = details.ImdbID
