@@ -346,16 +346,19 @@ func processVideoFile(
 	apiKey, outputDir string,
 	totalFiles, movieCount, tvCount, skipped *int,
 	scannedItems *[]db.Media,
+	useTable bool,
 ) bool {
 	*totalFiles++
 
 	result := cleaner.Clean(vf.Name)
-	fmt.Printf("  📄 %s\n", vf.Name)
-	fmt.Printf("     → %s", result.CleanTitle)
-	if result.Year > 0 {
-		fmt.Printf(" (%d)", result.Year)
+	if !useTable {
+		fmt.Printf("  📄 %s\n", vf.Name)
+		fmt.Printf("     → %s", result.CleanTitle)
+		if result.Year > 0 {
+			fmt.Printf(" (%d)", result.Year)
+		}
+		fmt.Printf(" [%s]\n", result.Type)
 	}
-	fmt.Printf(" [%s]\n", result.Type)
 
 	// Check if already in DB by path
 	existing, searchErr := database.SearchMedia(result.CleanTitle)
@@ -364,7 +367,16 @@ func processVideoFile(
 	}
 	for i := range existing {
 		if existing[i].OriginalFilePath == vf.FullPath {
-			fmt.Println("     ⏩ Already in database, skipping")
+			if useTable {
+				printScanTableRow(buildMediaTableRow(*totalFiles, &db.Media{
+					OriginalFileName: vf.Name,
+					CleanTitle:       result.CleanTitle,
+					Year:             result.Year,
+					Type:             result.Type,
+				}, "skipped"))
+			} else {
+				fmt.Println("     ⏩ Already in database, skipping")
+			}
 			*skipped++
 			if result.Type == "movie" {
 				*movieCount++
@@ -418,12 +430,18 @@ func processVideoFile(
 
 	*scannedItems = append(*scannedItems, *m)
 
+	if useTable {
+		printScanTableRow(buildMediaTableRow(*totalFiles, m, "new"))
+	}
+
 	if m.Type == "movie" {
 		*movieCount++
 	} else {
 		*tvCount++
 	}
-	fmt.Println()
+	if !useTable {
+		fmt.Println()
+	}
 	return true
 }
 
