@@ -40,7 +40,7 @@ Examples:
   movie scan ~/Movies            Scan specific folder
   movie scan -r                  Scan current directory recursively
   movie scan ~/Movies --recursive
-  movie scan -r --depth 2        Scan only 2 levels deep`,
+  movie scan -r --depth 2        Scan only 2 levels deep
   movie scan --dry-run            Preview files without writing to DB`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
