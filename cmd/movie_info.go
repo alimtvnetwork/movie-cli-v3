@@ -41,13 +41,14 @@ If a numeric ID is given, it looks up the item from your local library.
 If a title is given, it first searches the local database. If not found,
 it queries the TMDb API, saves the result, and then displays it.
 
-Use --format json to output the result as JSON to stdout.`,
+Use --format json to output the result as JSON to stdout.
+Use --format table to output the result as a formatted table.`,
 	Args: cobra.MinimumNArgs(1),
 	Run:  runMovieInfo,
 }
 
 func init() {
-	movieInfoCmd.Flags().StringVar(&infoFormat, "format", "", "Output format: json")
+	movieInfoCmd.Flags().StringVar(&infoFormat, "format", "", "Output format: json, table")
 }
 
 
@@ -67,6 +68,8 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	if resolveErr == nil {
 		if infoFormat == "json" {
 			printMediaDetailJSON(m, "local")
+		} else if infoFormat == "table" {
+			printMediaDetailTable(m)
 		} else {
 			fmt.Println("📚 Found in local library:")
 			fmt.Println()
@@ -121,6 +124,8 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	if existing != nil {
 		if infoFormat == "json" {
 			printMediaDetailJSON(existing, "local")
+		} else if infoFormat == "table" {
+			printMediaDetailTable(existing)
 		} else {
 			fmt.Println("📚 Already in your library:")
 			fmt.Println()
@@ -181,6 +186,8 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 
 	if infoFormat == "json" {
 		printMediaDetailJSON(m, "tmdb")
+	} else if infoFormat == "table" {
+		printMediaDetailTable(m)
 	} else {
 		fmt.Println()
 		fmt.Println("✅ Saved to your library!")

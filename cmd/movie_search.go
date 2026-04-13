@@ -26,13 +26,14 @@ Fetches full metadata (rating, genres, cast, crew, poster) and saves
 to the local database. Categorizes as Movie or TV Show automatically.
 Does NOT require the file to exist in your library.
 
-Use --format json to output search results as JSON (no interactive prompt).`,
+Use --format json to output search results as JSON (no interactive prompt).
+Use --format table to output search results as a formatted table (no interactive prompt).`,
 	Args: cobra.MinimumNArgs(1),
 	Run:  runMovieSearch,
 }
 
 func init() {
-	movieSearchCmd.Flags().StringVar(&searchFormat, "format", "", "Output format: json")
+	movieSearchCmd.Flags().StringVar(&searchFormat, "format", "", "Output format: json, table")
 }
 
 
@@ -61,7 +62,7 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 
 	client := tmdb.NewClient(apiKey)
 	query := strings.Join(args, " ")
-	if searchFormat != "json" {
+	if searchFormat != "json" && searchFormat != "table" {
 		fmt.Printf("🔎 Searching TMDb for: %s\n\n", query)
 	}
 
@@ -84,6 +85,12 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	// JSON mode: output results and exit (no interactive prompt)
 	if searchFormat == "json" {
 		printSearchResultsJSON(results)
+		return
+	}
+
+	// Table mode: output results and exit (no interactive prompt)
+	if searchFormat == "table" {
+		printSearchResultsTable(results)
 		return
 	}
 
