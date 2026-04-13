@@ -42,7 +42,8 @@ Examples:
   movie scan -r                  Scan current directory recursively
   movie scan ~/Movies --recursive
   movie scan -r --depth 2        Scan only 2 levels deep
-  movie scan --dry-run            Preview files without writing to DB`,
+  movie scan --dry-run            Preview files without writing to DB
+  movie scan --format table       Show results as a formatted table`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -54,6 +55,8 @@ func init() {
 		"max subdirectory depth for recursive scan (0 = unlimited)")
 	movieScanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false,
 		"preview what would be scanned without writing to DB or .movie-output")
+	movieScanCmd.Flags().StringVar(&scanFormat, "format", "default",
+		"output format: default or table")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
