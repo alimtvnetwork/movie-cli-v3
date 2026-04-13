@@ -44,6 +44,11 @@ type Media struct {
 
 // InsertMedia inserts a new media record and returns the ID.
 func (d *DB) InsertMedia(m *Media) (int64, error) {
+	var tmdbID interface{}
+	if m.TmdbID > 0 {
+		tmdbID = m.TmdbID
+	}
+
 	res, err := d.Exec(`
 		INSERT INTO media (title, clean_title, year, type, tmdb_id, imdb_id,
 			description, imdb_rating, tmdb_rating, popularity, genre, director,
@@ -51,7 +56,7 @@ func (d *DB) InsertMedia(m *Media) (int64, error) {
 			current_file_path, file_extension, file_size,
 			runtime, language, budget, revenue, trailer_url, tagline)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		m.Title, m.CleanTitle, m.Year, m.Type, m.TmdbID, m.ImdbID,
+		m.Title, m.CleanTitle, m.Year, m.Type, tmdbID, m.ImdbID,
 		m.Description, m.ImdbRating, m.TmdbRating, m.Popularity, m.Genre, m.Director,
 		m.CastList, m.ThumbnailPath, m.OriginalFileName, m.OriginalFilePath,
 		m.CurrentFilePath, m.FileExtension, m.FileSize,

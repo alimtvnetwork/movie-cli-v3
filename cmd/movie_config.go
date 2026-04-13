@@ -21,13 +21,15 @@ Keys:
   archive_dir    - Default archive directory
   scan_dir       - Default scan directory
   tmdb_api_key   - TMDb API key
+  tmdb_token     - TMDb access token
   page_size      - Items per page in list view
 
 Examples:
   movie config                           # Show all
   movie config get movies_dir            # Get one
   movie config set movies_dir ~/Movies   # Set one
-  movie config set tmdb_api_key abc123   # Set API key`,
+  movie config set tmdb_api_key abc123   # Set API key
+  movie config set tmdb_token eyJ...     # Set access token`,
 	Run: runMovieConfig,
 }
 
@@ -40,7 +42,6 @@ func runMovieConfig(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	if len(args) == 0 {
-		// Show all config
 		showAllConfig(database)
 		return
 	}
@@ -81,14 +82,13 @@ func showAllConfig(database *db.DB) {
 	fmt.Println("⚙️  Configuration:")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-	keys := []string{"movies_dir", "tv_dir", "archive_dir", "scan_dir", "tmdb_api_key", "page_size"}
+	keys := []string{"movies_dir", "tv_dir", "archive_dir", "scan_dir", "tmdb_api_key", "tmdb_token", "page_size"}
 	for _, key := range keys {
 		val, err := database.GetConfig(key)
 		if err != nil {
 			val = "(not set)"
 		}
-		// Mask API key
-		if key == "tmdb_api_key" && len(val) > 8 {
+		if (key == "tmdb_api_key" || key == "tmdb_token") && len(val) > 8 {
 			val = val[:4] + "..." + val[len(val)-4:]
 		}
 		fmt.Printf("  %-15s = %s\n", key, val)
