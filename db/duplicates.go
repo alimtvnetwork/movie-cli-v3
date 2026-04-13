@@ -122,7 +122,7 @@ func (d *DB) FindDuplicatesByFileSize() ([]DuplicateGroup, error) {
 			continue
 		}
 		groups = append(groups, DuplicateGroup{
-			Key:   humanSize(size),
+			Key:   HumanSize(size),
 			Items: items,
 		})
 	}
