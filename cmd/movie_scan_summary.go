@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
@@ -109,39 +110,14 @@ func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies
 	return nil
 }
 
-// splitGenres splits a comma-separated genre string.
+// splitGenres splits a comma-separated genre string into trimmed parts.
 func splitGenres(s string) []string {
 	var result []string
-	for _, part := range filepath.SplitList(s) {
-		// filepath.SplitList uses OS separator; we need comma splitting
-		result = append(result, part)
-	}
-	// Actually split by comma
-	result = nil
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == ',' {
-			t := trimSpace(s[start:i])
-			if t != "" {
-				result = append(result, t)
-			}
-			start = i + 1
+	for _, part := range strings.Split(s, ",") {
+		t := strings.TrimSpace(part)
+		if t != "" {
+			result = append(result, t)
 		}
 	}
-	t := trimSpace(s[start:])
-	if t != "" {
-		result = append(result, t)
-	}
 	return result
-}
-
-func trimSpace(s string) string {
-	i, j := 0, len(s)
-	for i < j && s[i] == ' ' {
-		i++
-	}
-	for j > i && s[j-1] == ' ' {
-		j--
-	}
-	return s[i:j]
 }
