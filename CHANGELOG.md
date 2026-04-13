@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.9.0
+
+### Added
+- **`movie scan --format json`** — output scan results as structured JSON to stdout for piping to `jq`, scripts, or other tools; includes metadata, counts, and per-item details; works with `--dry-run` too
+
 ## v1.8.0
 
 ### Fixed

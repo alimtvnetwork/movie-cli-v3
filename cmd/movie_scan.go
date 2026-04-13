@@ -42,7 +42,8 @@ Examples:
   movie scan ~/Movies --recursive
   movie scan -r --depth 2         Scan only 2 levels deep
   movie scan --dry-run            Preview files without writing to DB
-  movie scan --format table       Show results as a formatted table`,
+  movie scan --format table       Show results as a formatted table
+  movie scan --format json        Output results as JSON to stdout`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -55,10 +56,12 @@ func init() {
 	movieScanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false,
 		"preview what would be scanned without writing to DB or .movie-output")
 	movieScanCmd.Flags().StringVar(&scanFormat, "format", "default",
-		"output format: default or table")
+		"output format: default, table, or json")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
+	useJSON := scanFormat == "json"
+
 	database, err := db.Open()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
@@ -66,7 +69,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	scanDir, err := resolveScanDir(args)
+	scanDir, err := resolveScanDir(args, useJSON)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
 		return
@@ -82,10 +85,13 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	printScanHeader(scanDir, outputDir)
+	if !useJSON {
+		printScanHeader(scanDir, outputDir)
+	}
 
 	var totalFiles, movieCount, tvCount, skipped int
 	var scannedItems []db.Media
+	var jsonItems []scanJSONItem
 
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
 	useTable := scanFormat == "table"
@@ -96,7 +102,13 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	}
 
 	if scanDryRun {
-		if useTable {
+		if useJSON {
+			items, mc, tc := buildDryRunJSONItems(videoFiles)
+			jsonItems = items
+			totalFiles = len(items)
+			movieCount = mc
+			tvCount = tc
+		} else if useTable {
 			rows, mc, tc := buildDryRunTableRows(videoFiles)
 			for _, row := range rows {
 				printScanTableRow(row)
@@ -127,7 +139,12 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		for _, vf := range videoFiles {
 			processVideoFile(vf, database, client, useTMDb, outputDir,
 				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
-				useTable)
+				useTable || useJSON)
+		}
+		if useJSON {
+			for i := range scannedItems {
+				jsonItems = append(jsonItems, buildMediaJSONItem(&scannedItems[i], "new"))
+			}
 		}
 	}
 
@@ -141,11 +158,15 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	printScanFooter(scanDir, outputDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
+	if useJSON {
+		printScanJSON(scanDir, jsonItems, totalFiles, movieCount, tvCount, skipped)
+	} else {
+		printScanFooter(scanDir, outputDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
+	}
 }
 
 // resolveScanDir determines and validates the scan directory from args.
-func resolveScanDir(args []string) (string, error) {
+func resolveScanDir(args []string, quiet bool) (string, error) {
 	var scanDir string
 	var err error
 
@@ -156,7 +177,9 @@ func resolveScanDir(args []string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("cannot determine current directory: %v", err)
 		}
-		fmt.Printf("📂 No folder specified — scanning current directory\n\n")
+		if !quiet {
+			fmt.Printf("📂 No folder specified — scanning current directory\n\n")
+		}
 	}
 
 	if strings.HasPrefix(scanDir, "~") {
