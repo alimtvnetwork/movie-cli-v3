@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.10.0
+
+### Added
+- **`movie ls --format json`** — output entire library as a JSON array to stdout; includes id, title, year, type, ratings, genre, file path, and file size per item
+- **`movie stats --format json`** — output library statistics as a JSON object to stdout; includes counts, storage, top genres, and average ratings
+
 ## v1.9.0
 
 ### Added
