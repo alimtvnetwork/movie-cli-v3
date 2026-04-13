@@ -17,6 +17,7 @@ import (
 
 var scanRecursive bool
 var scanDepth int
+var scanDryRun bool
 
 var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
@@ -27,6 +28,7 @@ from TMDb, downloads thumbnails, and stores everything in the database.
 If no folder is specified, scans the current working directory.
 Use --recursive (-r) to scan all subdirectories recursively.
 Use --depth to limit how many levels deep the recursive scan goes.
+Use --dry-run to preview what would be scanned without writing anything.
 
 Results are saved to .movie-output/ inside the scanned folder, including:
   - summary.json   — full scan report with categories, counts, and per-item metadata
@@ -39,6 +41,7 @@ Examples:
   movie scan -r                  Scan current directory recursively
   movie scan ~/Movies --recursive
   movie scan -r --depth 2        Scan only 2 levels deep`,
+  movie scan --dry-run            Preview files without writing to DB`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -48,6 +51,8 @@ func init() {
 		"scan all subdirectories recursively")
 	movieScanCmd.Flags().IntVarP(&scanDepth, "depth", "d", 0,
 		"max subdirectory depth for recursive scan (0 = unlimited)")
+	movieScanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false,
+		"preview what would be scanned without writing to DB or .movie-output")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
@@ -105,26 +110,28 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		fmt.Println()
 	}
 
-	client := tmdb.NewClient(apiKey)
-
 	// Set up .movie-output directory inside the scanned folder
 	outputDir := filepath.Join(scanDir, ".movie-output")
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot create output directory: %v\n", err)
-		return
-	}
-	jsonMovieDir := filepath.Join(outputDir, "json", "movie")
-	jsonTVDir := filepath.Join(outputDir, "json", "tv")
-	if err := os.MkdirAll(jsonMovieDir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot create json/movie dir: %v\n", err)
-		return
-	}
-	if err := os.MkdirAll(jsonTVDir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot create json/tv dir: %v\n", err)
-		return
+
+	if !scanDryRun {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Cannot create output directory: %v\n", err)
+			return
+		}
+		if err := os.MkdirAll(filepath.Join(outputDir, "json", "movie"), 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Cannot create json/movie dir: %v\n", err)
+			return
+		}
+		if err := os.MkdirAll(filepath.Join(outputDir, "json", "tv"), 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Cannot create json/tv dir: %v\n", err)
+			return
+		}
 	}
 
 	fmt.Printf("🔍 Scanning: %s\n", scanDir)
+	if scanDryRun {
+		fmt.Println("🧪 Mode: dry run (no writes)")
+	}
 	if scanRecursive {
 		if scanDepth > 0 {
 			fmt.Printf("🔄 Mode: recursive (max depth: %d)\n", scanDepth)
@@ -132,7 +139,10 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			fmt.Println("🔄 Mode: recursive (all subdirectories)")
 		}
 	}
-	fmt.Printf("📁 Output:   %s\n\n", outputDir)
+	if !scanDryRun {
+		fmt.Printf("📁 Output:   %s\n", outputDir)
+	}
+	fmt.Println()
 
 	var totalFiles, movieCount, tvCount, skipped int
 	var scannedItems []db.Media
@@ -140,35 +150,62 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	// Collect video files based on scan mode
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
 
-	for _, vf := range videoFiles {
-		result := processVideoFile(vf, database, client, apiKey, outputDir,
-			&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems)
-		if !result {
-			continue
+	if scanDryRun {
+		for _, vf := range videoFiles {
+			totalFiles++
+			result := cleaner.Clean(vf.Name)
+			fmt.Printf("  📄 %s\n", vf.Name)
+			fmt.Printf("     → %s", result.CleanTitle)
+			if result.Year > 0 {
+				fmt.Printf(" (%d)", result.Year)
+			}
+			fmt.Printf(" [%s]\n", result.Type)
+			fmt.Printf("     📂 %s\n\n", vf.FullPath)
+			if result.Type == "movie" {
+				movieCount++
+			} else {
+				tvCount++
+			}
+		}
+	} else {
+		client := tmdb.NewClient(apiKey)
+		for _, vf := range videoFiles {
+			processVideoFile(vf, database, client, apiKey, outputDir,
+				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems)
 		}
 	}
 
 	// Log scan history
-	if histErr := database.InsertScanHistory(scanDir, totalFiles, movieCount, tvCount); histErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
+	if !scanDryRun {
+		if histErr := database.InsertScanHistory(scanDir, totalFiles, movieCount, tvCount); histErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
+		}
 	}
 
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Printf("📊 Scan Complete!\n")
+	if scanDryRun {
+		fmt.Printf("📊 Dry Run Complete!\n")
+	} else {
+		fmt.Printf("📊 Scan Complete!\n")
+	}
 	fmt.Printf("   Total files: %d\n", totalFiles)
 	fmt.Printf("   Movies:      %d\n", movieCount)
 	fmt.Printf("   TV Shows:    %d\n", tvCount)
 	if skipped > 0 {
 		fmt.Printf("   Skipped:     %d (already in DB)\n", skipped)
 	}
-	fmt.Printf("   Output:      %s\n", outputDir)
-
-	// Write summary.json to .movie-output/
-	if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems,
-		totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not write summary.json: %v\n", summaryErr)
+	if scanDryRun {
+		fmt.Println("\n💡 Run without --dry-run to actually scan and save.")
 	} else {
-		fmt.Printf("\n📋 Summary saved: %s\n", filepath.Join(outputDir, "summary.json"))
+		fmt.Printf("   Output:      %s\n", outputDir)
+
+		// Write summary.json to .movie-output/
+		if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems,
+			totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Could not write summary.json: %v\n", summaryErr)
+		} else {
+			fmt.Printf("\n📋 Summary saved: %s\n", filepath.Join(outputDir, "summary.json"))
+		}
 	}
 }
 

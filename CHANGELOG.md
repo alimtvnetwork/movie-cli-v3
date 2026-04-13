@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.6.0
+
+### Added
+- **`movie scan --dry-run`** — preview what would be scanned (files found, cleaned titles, types) without writing to DB or creating `.movie-output/`
+
 ## v1.5.0
 
 ### Added
