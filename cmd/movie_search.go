@@ -34,15 +34,8 @@ Use --format json to output search results as JSON (no interactive prompt).`,
 func init() {
 	movieSearchCmd.Flags().StringVar(&searchFormat, "format", "", "Output format: json")
 }
-	Use:   "search [name]",
-	Short: "Search TMDb for a movie or TV show and save to database",
-	Long: `Searches the TMDb API for movies/TV shows matching the query.
-Fetches full metadata (rating, genres, cast, crew, poster) and saves
-to the local database. Categorizes as Movie or TV Show automatically.
-Does NOT require the file to exist in your library.`,
-	Args: cobra.MinimumNArgs(1),
-	Run:  runMovieSearch,
-}
+
+
 
 func runMovieSearch(cmd *cobra.Command, args []string) {
 	database, err := db.Open()

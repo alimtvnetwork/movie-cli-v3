@@ -49,16 +49,8 @@ Use --format json to output the result as JSON to stdout.`,
 func init() {
 	movieInfoCmd.Flags().StringVar(&infoFormat, "format", "", "Output format: json")
 }
-	Use:   "info [id or title]",
-	Short: "Show detailed info for a movie or TV show",
-	Long: `Display full metadata for a media item.
 
-If a numeric ID is given, it looks up the item from your local library.
-If a title is given, it first searches the local database. If not found,
-it queries the TMDb API, saves the result, and then displays it.`,
-	Args: cobra.MinimumNArgs(1),
-	Run:  runMovieInfo,
-}
+
 
 func runMovieInfo(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
