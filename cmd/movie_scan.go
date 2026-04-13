@@ -101,6 +101,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			// For directories, look for video files inside
 			subEntries, subErr := os.ReadDir(fullPath)
 			if subErr != nil {
+				fmt.Fprintf(os.Stderr, "  ⚠️  Cannot read subdirectory %s: %v\n", name, subErr)
 				continue
 			}
 			foundVideo := false
@@ -208,10 +209,12 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 						fmt.Fprintf(os.Stderr, "     ⚠️  Cannot create thumbnail dir: %v\n", mkdirErr)
 					}
 					thumbPath := filepath.Join(thumbDir, slug+".jpg")
-					if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr == nil {
-						m.ThumbnailPath = thumbPath
-						fmt.Println("     🖼️  Thumbnail saved")
-					}
+				if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
+					fmt.Fprintf(os.Stderr, "     ⚠️  Thumbnail download failed: %v\n", dlErr)
+				} else {
+					m.ThumbnailPath = thumbPath
+					fmt.Println("     🖼️  Thumbnail saved")
+				}
 				}
 
 				fmt.Printf("     ✅ TMDb: %s (⭐ %.1f)\n", m.Title, m.TmdbRating)

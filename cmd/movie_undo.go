@@ -52,9 +52,13 @@ func runMovieUndo(cmd *cobra.Command, args []string) {
 	}
 
 	// Check source exists
-	if _, statErr := os.Stat(lastMove.ToPath); os.IsNotExist(statErr) {
-		fmt.Fprintf(os.Stderr, "❌ File not found at: %s\n", lastMove.ToPath)
-		fmt.Fprintln(os.Stderr, "   It may have been moved or deleted manually.")
+	if _, statErr := os.Stat(lastMove.ToPath); statErr != nil {
+		if os.IsNotExist(statErr) {
+			fmt.Fprintf(os.Stderr, "❌ File not found at: %s\n", lastMove.ToPath)
+			fmt.Fprintln(os.Stderr, "   It may have been moved or deleted manually.")
+		} else {
+			fmt.Fprintf(os.Stderr, "❌ Cannot access file %s: %v\n", lastMove.ToPath, statErr)
+		}
 		return
 	}
 

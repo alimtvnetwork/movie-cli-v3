@@ -17,7 +17,7 @@ import "fmt"
 
 // These three variables are overwritten by -ldflags at build time.
 var (
-	Version   = "v0.2.2-dev" // semver tag  e.g. "v1.2.0"
+	Version   = "v0.2.3-dev" // semver tag  e.g. "v1.2.0"
 	Commit    = "none"       // git SHA     e.g. "abc1234"
 	BuildDate = "unknown"    // build date  e.g. "2024-06-01"
 )

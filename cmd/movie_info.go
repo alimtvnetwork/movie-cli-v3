@@ -142,7 +142,9 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(os.Stderr, "⚠️  Cannot create thumbnail dir: %v\n", mkdirErr)
 		}
 		thumbPath := filepath.Join(thumbDir, slug+".jpg")
-		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr == nil {
+		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Thumbnail download failed: %v\n", dlErr)
+		} else {
 			m.ThumbnailPath = thumbPath
 		}
 	}

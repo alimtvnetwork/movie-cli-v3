@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 // mediaColumns is the standard SELECT column list for media queries.
 const mediaColumns = `id, title, clean_title, year, type, tmdb_id, imdb_id,
@@ -167,7 +170,7 @@ func (d *DB) TopGenres(limit int) (map[string]int, error) {
 	for rows.Next() {
 		var genre string
 		if err := rows.Scan(&genre); err != nil {
-			continue
+			return nil, fmt.Errorf("scanning genre: %w", err)
 		}
 		for _, g := range splitCSV(genre) {
 			counts[g]++
