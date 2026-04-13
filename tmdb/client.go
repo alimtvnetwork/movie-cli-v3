@@ -17,17 +17,27 @@ const imageBaseURL = "https://image.tmdb.org/t/p/w500"
 
 // Client interacts with the TMDb API.
 type Client struct {
-	HTTPClient *http.Client
-	APIKey     string
+	HTTPClient  *http.Client
+	APIKey      string
+	AccessToken string
 }
 
-// NewClient creates a new TMDb client. Reads API key from env or config.
+// NewClient creates a new TMDb client from an API key or env vars.
 func NewClient(apiKey string) *Client {
+	return NewClientWithToken(apiKey, "")
+}
+
+// NewClientWithToken creates a TMDb client using either an API key or bearer token.
+func NewClientWithToken(apiKey, accessToken string) *Client {
 	if apiKey == "" {
 		apiKey = os.Getenv("TMDB_API_KEY")
 	}
+	if accessToken == "" {
+		accessToken = os.Getenv("TMDB_TOKEN")
+	}
 	return &Client{
-		APIKey: apiKey,
+		APIKey:      apiKey,
+		AccessToken: accessToken,
 		HTTPClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
@@ -55,20 +65,20 @@ type searchResponse struct {
 
 // MovieDetails holds detailed movie info.
 type MovieDetails struct {
-	Title               string  `json:"title"`
-	Overview            string  `json:"overview"`
-	ReleaseDate         string  `json:"release_date"`
-	PosterPath          string  `json:"poster_path"`
-	ImdbID              string  `json:"imdb_id"`
-	OriginalLanguage    string  `json:"original_language"`
-	Tagline             string  `json:"tagline"`
-	Genres              []Genre `json:"genres"`
-	VoteAvg             float64 `json:"vote_average"`
-	Popularity          float64 `json:"popularity"`
-	ID                  int     `json:"id"`
-	Runtime             int     `json:"runtime"`
-	Budget              int64   `json:"budget"`
-	Revenue             int64   `json:"revenue"`
+	Title            string  `json:"title"`
+	Overview         string  `json:"overview"`
+	ReleaseDate      string  `json:"release_date"`
+	PosterPath       string  `json:"poster_path"`
+	ImdbID           string  `json:"imdb_id"`
+	OriginalLanguage string  `json:"original_language"`
+	Tagline          string  `json:"tagline"`
+	Genres           []Genre `json:"genres"`
+	VoteAvg          float64 `json:"vote_average"`
+	Popularity       float64 `json:"popularity"`
+	ID               int     `json:"id"`
+	Runtime          int     `json:"runtime"`
+	Budget           int64   `json:"budget"`
+	Revenue          int64   `json:"revenue"`
 }
 
 // VideoResult holds a single video from TMDb.
@@ -127,15 +137,15 @@ type CrewMember struct {
 
 // SearchMulti searches for movies and TV shows.
 func (c *Client) SearchMulti(query string) ([]SearchResult, error) {
-	u := fmt.Sprintf("%s/search/multi?api_key=%s&query=%s&page=1",
-		baseURL, c.APIKey, url.QueryEscape(query))
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("page", "1")
 
 	var resp searchResponse
-	if err := c.get(u, &resp); err != nil {
+	if err := c.get(c.buildURL("/search/multi", params), &resp); err != nil {
 		return nil, err
 	}
 
-	// Filter to only movie/tv
 	var filtered []SearchResult
 	for i := range resp.Results {
 		if resp.Results[i].MediaType == "movie" || resp.Results[i].MediaType == "tv" {
@@ -147,9 +157,8 @@ func (c *Client) SearchMulti(query string) ([]SearchResult, error) {
 
 // GetMovieDetails returns detailed info for a movie.
 func (c *Client) GetMovieDetails(tmdbID int) (*MovieDetails, error) {
-	u := fmt.Sprintf("%s/movie/%d?api_key=%s", baseURL, tmdbID, c.APIKey)
 	var d MovieDetails
-	if err := c.get(u, &d); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/movie/%d", tmdbID), nil), &d); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -157,9 +166,8 @@ func (c *Client) GetMovieDetails(tmdbID int) (*MovieDetails, error) {
 
 // GetTVDetails returns detailed info for a TV show.
 func (c *Client) GetTVDetails(tmdbID int) (*TVDetails, error) {
-	u := fmt.Sprintf("%s/tv/%d?api_key=%s", baseURL, tmdbID, c.APIKey)
 	var d TVDetails
-	if err := c.get(u, &d); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/tv/%d", tmdbID), nil), &d); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -167,9 +175,8 @@ func (c *Client) GetTVDetails(tmdbID int) (*TVDetails, error) {
 
 // GetMovieCredits returns cast and crew for a movie.
 func (c *Client) GetMovieCredits(tmdbID int) (*Credits, error) {
-	u := fmt.Sprintf("%s/movie/%d/credits?api_key=%s", baseURL, tmdbID, c.APIKey)
 	var cr Credits
-	if err := c.get(u, &cr); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/movie/%d/credits", tmdbID), nil), &cr); err != nil {
 		return nil, err
 	}
 	return &cr, nil
@@ -177,9 +184,8 @@ func (c *Client) GetMovieCredits(tmdbID int) (*Credits, error) {
 
 // GetTVCredits returns cast and crew for a TV show.
 func (c *Client) GetTVCredits(tmdbID int) (*Credits, error) {
-	u := fmt.Sprintf("%s/tv/%d/credits?api_key=%s", baseURL, tmdbID, c.APIKey)
 	var cr Credits
-	if err := c.get(u, &cr); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/tv/%d/credits", tmdbID), nil), &cr); err != nil {
 		return nil, err
 	}
 	return &cr, nil
@@ -187,9 +193,8 @@ func (c *Client) GetTVCredits(tmdbID int) (*Credits, error) {
 
 // GetMovieVideos returns videos (trailers, teasers) for a movie.
 func (c *Client) GetMovieVideos(tmdbID int) ([]VideoResult, error) {
-	u := fmt.Sprintf("%s/movie/%d/videos?api_key=%s", baseURL, tmdbID, c.APIKey)
 	var resp videosResponse
-	if err := c.get(u, &resp); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/movie/%d/videos", tmdbID), nil), &resp); err != nil {
 		return nil, err
 	}
 	return resp.Results, nil
@@ -197,9 +202,8 @@ func (c *Client) GetMovieVideos(tmdbID int) ([]VideoResult, error) {
 
 // GetTVVideos returns videos (trailers, teasers) for a TV show.
 func (c *Client) GetTVVideos(tmdbID int) ([]VideoResult, error) {
-	u := fmt.Sprintf("%s/tv/%d/videos?api_key=%s", baseURL, tmdbID, c.APIKey)
 	var resp videosResponse
-	if err := c.get(u, &resp); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/tv/%d/videos", tmdbID), nil), &resp); err != nil {
 		return nil, err
 	}
 	return resp.Results, nil
@@ -207,13 +211,11 @@ func (c *Client) GetTVVideos(tmdbID int) ([]VideoResult, error) {
 
 // TrailerURL finds the best YouTube trailer URL from a list of videos.
 func TrailerURL(videos []VideoResult) string {
-	// Prefer official trailer on YouTube
 	for _, v := range videos {
 		if v.Site == "YouTube" && v.Type == "Trailer" {
 			return "https://www.youtube.com/watch?v=" + v.Key
 		}
 	}
-	// Fall back to any YouTube video
 	for _, v := range videos {
 		if v.Site == "YouTube" {
 			return "https://www.youtube.com/watch?v=" + v.Key
@@ -247,10 +249,11 @@ func (c *Client) DownloadPoster(posterPath, dst string) error {
 
 // GetRecommendations returns recommended movies or TV shows.
 func (c *Client) GetRecommendations(tmdbID int, mediaType string, page int) ([]SearchResult, error) {
-	u := fmt.Sprintf("%s/%s/%d/recommendations?api_key=%s&page=%d",
-		baseURL, mediaType, tmdbID, c.APIKey, page)
+	params := url.Values{}
+	params.Set("page", fmt.Sprintf("%d", page))
+
 	var resp searchResponse
-	if err := c.get(u, &resp); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/%s/%d/recommendations", mediaType, tmdbID), params), &resp); err != nil {
 		return nil, err
 	}
 	return resp.Results, nil
@@ -258,10 +261,13 @@ func (c *Client) GetRecommendations(tmdbID int, mediaType string, page int) ([]S
 
 // DiscoverByGenre discovers content by genre ID.
 func (c *Client) DiscoverByGenre(mediaType string, genreID int, page int) ([]SearchResult, error) {
-	u := fmt.Sprintf("%s/discover/%s?api_key=%s&with_genres=%d&sort_by=popularity.desc&page=%d",
-		baseURL, mediaType, c.APIKey, genreID, page)
+	params := url.Values{}
+	params.Set("with_genres", fmt.Sprintf("%d", genreID))
+	params.Set("sort_by", "popularity.desc")
+	params.Set("page", fmt.Sprintf("%d", page))
+
 	var resp searchResponse
-	if err := c.get(u, &resp); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/discover/%s", mediaType), params), &resp); err != nil {
 		return nil, err
 	}
 	return resp.Results, nil
@@ -269,9 +275,8 @@ func (c *Client) DiscoverByGenre(mediaType string, genreID int, page int) ([]Sea
 
 // Trending returns trending content.
 func (c *Client) Trending(mediaType string) ([]SearchResult, error) {
-	u := fmt.Sprintf("%s/trending/%s/week?api_key=%s", baseURL, mediaType, c.APIKey)
 	var resp searchResponse
-	if err := c.get(u, &resp); err != nil {
+	if err := c.get(c.buildURL(fmt.Sprintf("/trending/%s/week", mediaType), nil), &resp); err != nil {
 		return nil, err
 	}
 	return resp.Results, nil
@@ -316,13 +321,38 @@ func PosterURL(path string) string {
 	return imageBaseURL + path
 }
 
+func (c *Client) buildURL(path string, params url.Values) string {
+	if params == nil {
+		params = url.Values{}
+	}
+	if c.AccessToken == "" && c.APIKey != "" {
+		params.Set("api_key", c.APIKey)
+	}
+	encoded := params.Encode()
+	if encoded == "" {
+		return baseURL + path
+	}
+	return baseURL + path + "?" + encoded
+}
+
 // MaxRetries is the number of retry attempts for rate-limited requests.
 const MaxRetries = 3
 
 func (c *Client) get(reqURL string, target interface{}) error {
 	var lastErr error
 	for attempt := 0; attempt <= MaxRetries; attempt++ {
-		resp, err := c.HTTPClient.Get(reqURL)
+		req, reqErr := http.NewRequest(http.MethodGet, reqURL, nil)
+		if reqErr != nil {
+			lastErr = fmt.Errorf("build request failed: %w", reqErr)
+			backoff(attempt)
+			continue
+		}
+		if c.AccessToken != "" {
+			req.Header.Set("Authorization", "Bearer "+c.AccessToken)
+		}
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
 			lastErr = fmt.Errorf("HTTP request failed: %w", err)
 			backoff(attempt)
@@ -365,7 +395,6 @@ var genreMap = map[int]string{
 	14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music",
 	9648: "Mystery", 10749: "Romance", 878: "Science Fiction",
 	10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
-	// TV-specific
 	10759: "Action & Adventure", 10762: "Kids", 10763: "News",
 	10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap",
 	10767: "Talk", 10768: "War & Politics",

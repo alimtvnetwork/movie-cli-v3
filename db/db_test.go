@@ -52,6 +52,17 @@ func TestInsertAndGetMedia(t *testing.T) {
 	}
 }
 
+func TestInsertMediaAllowsMissingTMDbID(t *testing.T) {
+	d := openTestDB(t)
+
+	if _, err := d.InsertMedia(&Media{Title: "Local One", CleanTitle: "local one", Type: "movie"}); err != nil {
+		t.Fatalf("first insert: %v", err)
+	}
+	if _, err := d.InsertMedia(&Media{Title: "Local Two", CleanTitle: "local two", Type: "movie"}); err != nil {
+		t.Fatalf("second insert with empty tmdb_id should store NULL: %v", err)
+	}
+}
+
 func TestUpdateMediaByTmdbID(t *testing.T) {
 	d := openTestDB(t)
 	seedMedia(t, d, "Inception", 27205)

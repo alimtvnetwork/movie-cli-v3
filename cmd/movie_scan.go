@@ -36,11 +36,11 @@ Results are saved to .movie-output/ inside the scanned folder, including:
   - json/tv/       — individual JSON files per TV show
 
 Examples:
-  movie scan                     Scan current directory (top-level)
-  movie scan ~/Movies            Scan specific folder
-  movie scan -r                  Scan current directory recursively
+  movie scan                      Scan current directory (top-level)
+  movie scan ~/Movies             Scan specific folder
+  movie scan -r                   Scan current directory recursively
   movie scan ~/Movies --recursive
-  movie scan -r --depth 2        Scan only 2 levels deep
+  movie scan -r --depth 2         Scan only 2 levels deep
   movie scan --dry-run            Preview files without writing to DB
   movie scan --format table       Show results as a formatted table`,
 	Args: cobra.MaximumNArgs(1),
@@ -66,17 +66,13 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	// Determine scan folder
 	scanDir, err := resolveScanDir(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
 		return
 	}
 
-	// Get TMDb API key
-	apiKey := resolveAPIKey(database)
-
-	// Set up .movie-output directory inside the scanned folder
+	creds := resolveScanTMDbCredentials(database)
 	outputDir := filepath.Join(scanDir, ".movie-output")
 
 	if !scanDryRun {
@@ -91,9 +87,9 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	var totalFiles, movieCount, tvCount, skipped int
 	var scannedItems []db.Media
 
-	// Collect video files based on scan mode
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
 	useTable := scanFormat == "table"
+	useTMDb := creds.HasAuth()
 
 	if useTable {
 		printScanTableHeader()
@@ -127,9 +123,9 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			}
 		}
 	} else {
-		client := tmdb.NewClient(apiKey)
+		client := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
 		for _, vf := range videoFiles {
-			processVideoFile(vf, database, client, apiKey, outputDir,
+			processVideoFile(vf, database, client, useTMDb, outputDir,
 				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
 				useTable)
 		}
@@ -139,7 +135,6 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanTableFooter()
 	}
 
-	// Log scan history
 	if !scanDryRun {
 		if histErr := database.InsertScanHistory(scanDir, totalFiles, movieCount, tvCount); histErr != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
@@ -164,7 +159,6 @@ func resolveScanDir(args []string) (string, error) {
 		fmt.Printf("📂 No folder specified — scanning current directory\n\n")
 	}
 
-	// Expand ~ to home
 	if strings.HasPrefix(scanDir, "~") {
 		home, homeErr := os.UserHomeDir()
 		if homeErr != nil {
@@ -173,32 +167,12 @@ func resolveScanDir(args []string) (string, error) {
 		scanDir = filepath.Join(home, scanDir[1:])
 	}
 
-	// Check folder exists
 	info, statErr := os.Stat(scanDir)
 	if statErr != nil || !info.IsDir() {
 		return "", fmt.Errorf("folder not found: %s", scanDir)
 	}
 
 	return scanDir, nil
-}
-
-// resolveAPIKey retrieves the TMDb API key from DB config or environment.
-func resolveAPIKey(database *db.DB) string {
-	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
-	}
-	if apiKey == "" {
-		apiKey = os.Getenv("TMDB_API_KEY")
-	}
-	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "⚠️  No TMDb API key configured.")
-		fmt.Fprintln(os.Stderr, "   Set it with: movie config set tmdb_api_key YOUR_KEY")
-		fmt.Fprintln(os.Stderr, "   Or set TMDB_API_KEY environment variable.")
-		fmt.Fprintln(os.Stderr, "   Scanning will proceed without metadata fetching.")
-		fmt.Println()
-	}
-	return apiKey
 }
 
 // createOutputDirs creates the .movie-output directory structure.
@@ -253,8 +227,6 @@ func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 		fmt.Println("\n💡 Run without --dry-run to actually scan and save.")
 	} else {
 		fmt.Printf("   Output:      %s\n", outputDir)
-
-		// Write summary.json to .movie-output/
 		if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems,
 			totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  Could not write summary.json: %v\n", summaryErr)

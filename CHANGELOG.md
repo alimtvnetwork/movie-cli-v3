@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.8.0
+
+### Fixed
+- **`movie scan` no longer fails when TMDb is unset** — media with no TMDb match/key now store `tmdb_id` as `NULL` instead of `0`, so bulk scans no longer hit `UNIQUE constraint failed: media.tmdb_id`
+- **Interactive TMDb setup before scan** — when TMDb is not configured, `movie scan` now prompts for a TMDb API key and TMDb access token before scanning starts; leaving both blank continues without metadata
+- **TMDb bearer token support** — scan can now authenticate with either `tmdb_api_key` or `tmdb_token`
+
 ## v1.7.1
 
 ### Changed

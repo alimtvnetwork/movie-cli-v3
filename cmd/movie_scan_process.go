@@ -18,7 +18,8 @@ func processVideoFile(
 	vf videoFile,
 	database *db.DB,
 	client *tmdb.Client,
-	apiKey, outputDir string,
+	hasTMDb bool,
+	outputDir string,
 	totalFiles, movieCount, tvCount, skipped *int,
 	scannedItems *[]db.Media,
 	useTable bool,
@@ -83,7 +84,7 @@ func processVideoFile(
 	}
 
 	// Fetch metadata from TMDb
-	if apiKey != "" {
+	if hasTMDb {
 		enrichFromTMDb(client, database, m, result)
 	}
 
