@@ -30,7 +30,25 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
+var infoFormat string
+
 var movieInfoCmd = &cobra.Command{
+	Use:   "info [id or title]",
+	Short: "Show detailed info for a movie or TV show",
+	Long: `Display full metadata for a media item.
+
+If a numeric ID is given, it looks up the item from your local library.
+If a title is given, it first searches the local database. If not found,
+it queries the TMDb API, saves the result, and then displays it.
+
+Use --format json to output the result as JSON to stdout.`,
+	Args: cobra.MinimumNArgs(1),
+	Run:  runMovieInfo,
+}
+
+func init() {
+	movieInfoCmd.Flags().StringVar(&infoFormat, "format", "", "Output format: json")
+}
 	Use:   "info [id or title]",
 	Short: "Show detailed info for a movie or TV show",
 	Long: `Display full metadata for a media item.
@@ -55,9 +73,13 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	// 1) Try local DB first (by ID or title)
 	m, resolveErr := resolveMediaByQuery(database, query)
 	if resolveErr == nil {
-		fmt.Println("📚 Found in local library:")
-		fmt.Println()
-		printMediaDetail(m)
+		if infoFormat == "json" {
+			printMediaDetailJSON(m, "local")
+		} else {
+			fmt.Println("📚 Found in local library:")
+			fmt.Println()
+			printMediaDetail(m)
+		}
 		return
 	}
 
@@ -105,9 +127,13 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "⚠️  DB lookup error: %v\n", existErr)
 	}
 	if existing != nil {
-		fmt.Println("📚 Already in your library:")
-		fmt.Println()
-		printMediaDetail(existing)
+		if infoFormat == "json" {
+			printMediaDetailJSON(existing, "local")
+		} else {
+			fmt.Println("📚 Already in your library:")
+			fmt.Println()
+			printMediaDetail(existing)
+		}
 		return
 	}
 
@@ -161,10 +187,14 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("✅ Saved to your library!")
-	fmt.Println()
-	printMediaDetail(m)
+	if infoFormat == "json" {
+		printMediaDetailJSON(m, "tmdb")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ Saved to your library!")
+		fmt.Println()
+		printMediaDetail(m)
+	}
 }
 
 // fetchMovieDetails populates a Media record with TMDb movie details + credits + videos.
