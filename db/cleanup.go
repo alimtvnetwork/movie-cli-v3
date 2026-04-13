@@ -2,7 +2,10 @@
 // SHARED: used by cmd/movie_cleanup.go
 package db
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 // StaleEntry represents a media record whose file is missing from disk.
 type StaleEntry struct {
