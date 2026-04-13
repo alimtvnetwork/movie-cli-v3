@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.12.0
+
+### Added
+- **`movie search --format table`** — output TMDb search results as a formatted table (no interactive prompt); columns: #, Title, Year, Type, Rating, TMDb ID
+- **`movie info --format table`** — output media detail as a key-value formatted table; shows all metadata fields dynamically
+
 ## v1.11.0
 
 ### Added
