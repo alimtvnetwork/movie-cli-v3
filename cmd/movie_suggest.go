@@ -94,7 +94,13 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 
 	// Get top genres from library
 	genres, err := database.TopGenres(5)
-	if err != nil || len(genres) == 0 {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Genre analysis error: %v\n", err)
+		fmt.Println("⚠️  Showing trending instead.")
+		showTrending(client, mediaType, count)
+		return
+	}
+	if len(genres) == 0 {
 		fmt.Println("⚠️  Not enough data. Showing trending instead.")
 		showTrending(client, mediaType, count)
 		return

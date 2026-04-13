@@ -17,10 +17,7 @@ type StaleEntry struct {
 // original_file_path no longer exists on disk.
 func (d *DB) FindStaleEntries(limit int) ([]StaleEntry, error) {
 	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+		SELECT `+mediaColumns+`
 		FROM media
 		WHERE original_file_path != ''
 		ORDER BY clean_title ASC

@@ -28,7 +28,7 @@ func (d *DB) FindDuplicatesByTmdbID() ([]DuplicateGroup, error) {
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			continue
+			return nil, fmt.Errorf("scanning tmdb_id: %w", err)
 		}
 		ids = append(ids, id)
 	}
@@ -67,7 +67,7 @@ func (d *DB) FindDuplicatesByFileName() ([]DuplicateGroup, error) {
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			continue
+			return nil, fmt.Errorf("scanning file_name: %w", err)
 		}
 		names = append(names, name)
 	}
@@ -107,7 +107,7 @@ func (d *DB) FindDuplicatesByFileSize() ([]DuplicateGroup, error) {
 	for rows.Next() {
 		var size int64
 		if err := rows.Scan(&size); err != nil {
-			continue
+			return nil, fmt.Errorf("scanning file_size: %w", err)
 		}
 		sizes = append(sizes, size)
 	}
