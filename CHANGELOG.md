@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.4.0
+
+### Fixed
+- **`movie update` works from anywhere** — no longer requires CWD to be inside the git repo; finds the repo next to the binary, clones fresh if needed
+
 ## v1.3.0
 
 ### Added

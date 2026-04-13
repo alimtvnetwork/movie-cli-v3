@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
+
+// repoURL is the canonical GitHub URL used when the binary is not inside the repo.
+const repoURL = "https://github.com/alimtvnetwork/movie-cli-v3.git"
 
 // Result holds the outcome of a self-update attempt.
 type Result struct {
@@ -22,14 +26,9 @@ func Run() (*Result, error) {
 		return nil, fmt.Errorf("git is not installed or not in PATH")
 	}
 
-	cwd, err := os.Getwd()
+	repoPath, err := findRepoPath()
 	if err != nil {
-		return nil, fmt.Errorf("cannot read current directory: %w", err)
-	}
-
-	repoPath, err := gitOutput(cwd, "rev-parse", "--show-toplevel")
-	if err != nil {
-		return nil, fmt.Errorf("self-update must run inside a cloned git repository: %w", err)
+		return nil, err
 	}
 
 	dirty, err := gitOutput(repoPath, "status", "--porcelain")
@@ -81,4 +80,49 @@ func gitOutput(dir string, args ...string) (string, error) {
 	}
 
 	return text, nil
+}
+
+// findRepoPath locates the git repository root by checking (in order):
+//  1. The directory containing the running binary
+//  2. The current working directory
+//  3. A default clone location next to the binary
+//
+// If none have a .git directory, it clones the repo fresh next to the binary.
+func findRepoPath() (string, error) {
+	// 1. Try the binary's own directory
+	exe, exeErr := os.Executable()
+	if exeErr == nil {
+		exe, _ = filepath.EvalSymlinks(exe) // resolve symlinks
+		exeDir := filepath.Dir(exe)
+		if p, gitErr := gitOutput(exeDir, "rev-parse", "--show-toplevel"); gitErr == nil {
+			return p, nil
+		}
+
+		// Check for a clone next to the binary: <exeDir>/movie-cli-v3/
+		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
+		if p, gitErr := gitOutput(cloneDir, "rev-parse", "--show-toplevel"); gitErr == nil {
+			return p, nil
+		}
+	}
+
+	// 2. Try CWD
+	cwd, cwdErr := os.Getwd()
+	if cwdErr == nil {
+		if p, gitErr := gitOutput(cwd, "rev-parse", "--show-toplevel"); gitErr == nil {
+			return p, nil
+		}
+	}
+
+	// 3. No repo found — clone next to the binary
+	if exeErr == nil {
+		exeDir := filepath.Dir(exe)
+		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
+		fmt.Printf("📥 No local repo found. Cloning to: %s\n", cloneDir)
+		if _, cloneErr := gitOutput(exeDir, "clone", "--depth", "1", repoURL); cloneErr != nil {
+			return "", fmt.Errorf("cannot clone repository: %w", cloneErr)
+		}
+		return cloneDir, nil
+	}
+
+	return "", fmt.Errorf("cannot locate the movie-cli-v3 repository. Run from the repo directory or ensure the binary is deployed alongside the repo")
 }
