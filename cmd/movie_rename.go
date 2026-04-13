@@ -31,7 +31,11 @@ func runMovieRename(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	media, listErr := database.ListMedia(0, 10000)
-	if listErr != nil || len(media) == 0 {
+	if listErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ Failed to read media: %v\n", listErr)
+		return
+	}
+	if len(media) == 0 {
 		fmt.Println("📭 No media found.")
 		return
 	}

@@ -64,13 +64,21 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 
 	// Validate directory
 	info, statErr := os.Stat(sourceDir)
-	if statErr != nil || !info.IsDir() {
-		fmt.Fprintf(os.Stderr, "❌ Directory not found: %s\n", sourceDir)
+	if statErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ Cannot access directory: %v\n", statErr)
+		return
+	}
+	if !info.IsDir() {
+		fmt.Fprintf(os.Stderr, "❌ Path is not a directory: %s\n", sourceDir)
 		return
 	}
 
 	// Step 2: List video files in the directory
-	files := listVideoFiles(sourceDir)
+	files, listErr := listVideoFiles(sourceDir)
+	if listErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ %v\n", listErr)
+		return
+	}
 	if len(files) == 0 {
 		fmt.Printf("📭 No video files found in: %s\n", sourceDir)
 		return
@@ -86,8 +94,14 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 
 // runBatchMove moves all video files at once, auto-routing by type.
 func runBatchMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, files []os.FileInfo, home string) {
-	moviesDir, _ := database.GetConfig("movies_dir")
-	tvDir, _ := database.GetConfig("tv_dir")
+	moviesDir, cfgErr := database.GetConfig("movies_dir")
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (movies_dir): %v\n", cfgErr)
+	}
+	tvDir, cfgErr := database.GetConfig("tv_dir")
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (tv_dir): %v\n", cfgErr)
+	}
 	moviesDir = expandHome(moviesDir, home)
 	tvDir = expandHome(tvDir, home)
 
@@ -213,7 +227,7 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 	}
 	choice, parseErr := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 	if parseErr != nil || choice < 1 || choice > len(files) {
-		fmt.Println("❌ Invalid selection")
+		fmt.Fprintln(os.Stderr, "❌ Invalid selection")
 		return
 	}
 
@@ -304,11 +318,11 @@ func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, src
 		var insertErr error
 		mediaID, insertErr = database.InsertMedia(m)
 		if insertErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  DB insert error: %v\n", insertErr)
+			fmt.Fprintf(os.Stderr, "  ❌ DB insert error: %v\n", insertErr)
 		}
 	} else {
 		if updateErr := database.UpdateMediaPath(mediaID, destPath); updateErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  DB update path error: %v\n", updateErr)
+			fmt.Fprintf(os.Stderr, "  ❌ DB update path error: %v\n", updateErr)
 		}
 	}
 

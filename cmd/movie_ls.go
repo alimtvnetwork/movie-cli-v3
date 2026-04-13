@@ -31,8 +31,8 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	pageSizeStr, cfgErr := database.GetConfig("page_size")
-	if cfgErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (page_size): %v\n", cfgErr)
 	}
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 	if pageSize <= 0 {
@@ -130,7 +130,7 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 func showMediaDetail(database *db.DB, id int64) {
 	m, err := database.GetMediaByID(id)
 	if err != nil {
-		fmt.Printf("  ❌ Not found: %v\n", err)
+		fmt.Fprintf(os.Stderr, "  ❌ Not found: %v\n", err)
 		return
 	}
 

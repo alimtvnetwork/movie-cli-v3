@@ -3,7 +3,7 @@
 // -- Shared helpers exported from this file --
 //
 //	expandHome(path, home)                     — resolve ~ in paths
-//	listVideoFiles(dir) []FileInfo             — list video files in a directory
+//	listVideoFiles(dir) ([]FileInfo, error)    — list video files in a directory
 //	humanSize(bytes) string                    — format bytes as human-readable size
 //	promptSourceDirectory(scanner, db, home)   — interactive source dir picker
 //	promptDestination(scanner, db, home)       — interactive destination picker
@@ -11,7 +11,7 @@
 //	crossDeviceMove(src, dst) error            — copy+delete for cross-filesystem moves
 //	saveHistoryLog(basePath, title, year, from, to) — write move-log.json
 //
-// Consumers: movie_move.go, movie_rename.go, movie_undo.go
+// Consumers: movie_move.go, movie_rename.go, movie_undo.go, movie_stats.go
 //
 // Do NOT duplicate move/size/path logic elsewhere — use these helpers.
 package cmd
@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
@@ -40,33 +41,29 @@ func expandHome(path, home string) string {
 }
 
 // listVideoFiles returns all video files in a directory.
-func listVideoFiles(dir string) []os.FileInfo {
+// Returns an error if the directory cannot be read.
+func listVideoFiles(dir string) ([]os.FileInfo, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("cannot read directory %s: %w", dir, err)
 	}
 
 	var files []os.FileInfo
-	videoExts := map[string]bool{
-		".mkv": true, ".mp4": true, ".avi": true, ".mov": true,
-		".wmv": true, ".flv": true, ".webm": true, ".m4v": true,
-		".ts": true, ".vob": true, ".ogv": true, ".mpg": true,
-		".mpeg": true, ".3gp": true,
-	}
-
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
-		ext := strings.ToLower(filepath.Ext(entry.Name()))
-		if videoExts[ext] {
-			info, err := entry.Info()
-			if err == nil {
-				files = append(files, info)
-			}
+		if !cleaner.IsVideoFile(entry.Name()) {
+			continue
 		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			fmt.Fprintf(os.Stderr, "  ⚠️  Cannot stat %s: %v\n", entry.Name(), infoErr)
+			continue
+		}
+		files = append(files, info)
 	}
-	return files
+	return files, nil
 }
 
 // humanSize formats bytes into human-readable form.
@@ -93,7 +90,10 @@ func promptSourceDirectory(scanner interface {
 	Scan() bool
 	Text() string
 }, database *db.DB, home string) string {
-	scanDir, _ := database.GetConfig("scan_dir")
+	scanDir, cfgErr := database.GetConfig("scan_dir")
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (scan_dir): %v\n", cfgErr)
+	}
 	scanDir = expandHome(scanDir, home)
 
 	fmt.Println("📂 Where are your video files?")
@@ -131,7 +131,7 @@ func promptSourceDirectory(scanner interface {
 	}
 	choice, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 	if err != nil || choice < 1 || choice > len(options)+1 {
-		fmt.Println("❌ Invalid choice")
+		fmt.Fprintln(os.Stderr, "❌ Invalid choice")
 		return ""
 	}
 
@@ -151,9 +151,18 @@ func promptDestination(scanner interface {
 	Scan() bool
 	Text() string
 }, database *db.DB, home string) string {
-	moviesDir, _ := database.GetConfig("movies_dir")
-	tvDir, _ := database.GetConfig("tv_dir")
-	archiveDir, _ := database.GetConfig("archive_dir")
+	moviesDir, cfgErr := database.GetConfig("movies_dir")
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (movies_dir): %v\n", cfgErr)
+	}
+	tvDir, cfgErr := database.GetConfig("tv_dir")
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (tv_dir): %v\n", cfgErr)
+	}
+	archiveDir, cfgErr := database.GetConfig("archive_dir")
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
+		fmt.Fprintf(os.Stderr, "⚠️  Config read error (archive_dir): %v\n", cfgErr)
+	}
 	moviesDir = expandHome(moviesDir, home)
 	tvDir = expandHome(tvDir, home)
 	archiveDir = expandHome(archiveDir, home)
@@ -196,7 +205,7 @@ func promptDestination(scanner interface {
 		}
 		return expandHome(strings.TrimSpace(scanner.Text()), home)
 	default:
-		fmt.Println("❌ Invalid choice")
+		fmt.Fprintln(os.Stderr, "❌ Invalid choice")
 		return ""
 	}
 }
@@ -261,9 +270,11 @@ func crossDeviceMove(src, dst string) error {
 }
 
 // saveHistoryLog writes a JSON move record to the history log.
+// All errors are logged to stderr — never swallowed.
 func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
 	historyDir := filepath.Join(basePath, "json", "history")
 	if err := os.MkdirAll(historyDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot create history dir: %v\n", err)
 		return
 	}
 
@@ -277,10 +288,13 @@ func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
 
 	data, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot marshal history JSON: %v\n", err)
 		return
 	}
 
 	filename := fmt.Sprintf("move-%s.json", time.Now().UTC().Format("20060102-150405"))
 	historyPath := filepath.Join(historyDir, filename)
-	_ = os.WriteFile(historyPath, data, 0644)
+	if writeErr := os.WriteFile(historyPath, data, 0644); writeErr != nil {
+		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot write history file: %v\n", writeErr)
+	}
 }

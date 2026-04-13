@@ -42,8 +42,12 @@ func runMoviePlay(cmd *cobra.Command, args []string) {
 	}
 
 	filePath := m.CurrentFilePath
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "❌ File not found: %s\n", filePath)
+	if _, statErr := os.Stat(filePath); statErr != nil {
+		if os.IsNotExist(statErr) {
+			fmt.Fprintf(os.Stderr, "❌ File not found: %s\n", filePath)
+		} else {
+			fmt.Fprintf(os.Stderr, "❌ Cannot access file %s: %v\n", filePath, statErr)
+		}
 		return
 	}
 

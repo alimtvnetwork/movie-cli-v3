@@ -54,20 +54,24 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 
 	// File size stats
 	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
-	if sizeErr == nil && totalSize > 0 {
+	if sizeErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  File size stats error: %v\n", sizeErr)
+	} else if totalSize > 0 {
 		fmt.Println("  💾 Storage:")
-		fmt.Printf("     Total Size:    %s\n", humanSizeStats(totalSize))
-		fmt.Printf("     Largest File:  %s\n", humanSizeStats(largestSize))
-		fmt.Printf("     Smallest File: %s\n", humanSizeStats(smallestSize))
+		fmt.Printf("     Total Size:    %s\n", humanSize(totalSize))
+		fmt.Printf("     Largest File:  %s\n", humanSize(largestSize))
+		fmt.Printf("     Smallest File: %s\n", humanSize(smallestSize))
 		if total > 0 {
-			fmt.Printf("     Average Size:  %s\n", humanSizeStats(totalSize/int64(total)))
+			fmt.Printf("     Average Size:  %s\n", humanSize(totalSize/int64(total)))
 		}
 		fmt.Println()
 	}
 
 	// Top genres
-	genres, err := database.TopGenres(10)
-	if err == nil && len(genres) > 0 {
+	genres, genreErr := database.TopGenres(10)
+	if genreErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Genre stats error: %v\n", genreErr)
+	} else if len(genres) > 0 {
 		type gc struct {
 			name  string
 			count int
@@ -118,24 +122,5 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 	}
 	if tmdbCount > 0 {
 		fmt.Printf("  ⭐ Avg TMDb Rating: %.1f\n", avgTmdb/float64(tmdbCount))
-	}
-}
-
-// humanSizeStats formats bytes into human-readable size.
-func humanSizeStats(b int64) string {
-	const (
-		gb = 1024 * 1024 * 1024
-		mb = 1024 * 1024
-		kb = 1024
-	)
-	switch {
-	case b >= gb:
-		return fmt.Sprintf("%.1f GB", float64(b)/float64(gb))
-	case b >= mb:
-		return fmt.Sprintf("%.1f MB", float64(b)/float64(mb))
-	case b >= kb:
-		return fmt.Sprintf("%.1f KB", float64(b)/float64(kb))
-	default:
-		return fmt.Sprintf("%d B", b)
 	}
 }

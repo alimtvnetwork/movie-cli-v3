@@ -36,27 +36,27 @@ var tagAddCmd = &cobra.Command{
 
 		id, err := strconv.Atoi(args[0])
 		if err != nil {
-			fmt.Println("Error: Invalid ID —", args[0])
+			fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", args[0])
 			return
 		}
 		tag := strings.TrimSpace(args[1])
 		if tag == "" {
-			fmt.Println("Error: Tag cannot be empty")
+			fmt.Fprintln(os.Stderr, "❌ Tag cannot be empty")
 			return
 		}
 
 		media, err := d.GetMediaByID(int64(id))
 		if err != nil || media == nil {
-			fmt.Println("Error: Media not found with ID", id)
+			fmt.Fprintf(os.Stderr, "❌ Media not found with ID %d\n", id)
 			return
 		}
 
 		err = d.AddTag(id, tag)
 		if err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint") {
-				fmt.Printf("Error: Tag \"%s\" already exists on \"%s\"\n", tag, media.Title)
+				fmt.Fprintf(os.Stderr, "❌ Tag \"%s\" already exists on \"%s\"\n", tag, media.Title)
 			} else {
-				fmt.Println("Error:", err)
+				fmt.Fprintf(os.Stderr, "❌ Error adding tag: %v\n", err)
 			}
 			return
 		}
@@ -65,7 +65,7 @@ var tagAddCmd = &cobra.Command{
 		if media.Year > 0 {
 			year = fmt.Sprintf(" (%d)", media.Year)
 		}
-		fmt.Printf("Tag \"%s\" added to \"%s%s\"\n", tag, media.Title, year)
+		fmt.Printf("✅ Tag \"%s\" added to \"%s%s\"\n", tag, media.Title, year)
 	},
 }
 
@@ -84,24 +84,24 @@ var tagRemoveCmd = &cobra.Command{
 
 		id, err := strconv.Atoi(args[0])
 		if err != nil {
-			fmt.Println("Error: Invalid ID —", args[0])
+			fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", args[0])
 			return
 		}
 		tag := strings.TrimSpace(args[1])
 
 		media, err := d.GetMediaByID(int64(id))
 		if err != nil || media == nil {
-			fmt.Println("Error: Media not found with ID", id)
+			fmt.Fprintf(os.Stderr, "❌ Media not found with ID %d\n", id)
 			return
 		}
 
 		removed, err := d.RemoveTag(id, tag)
 		if err != nil {
-			fmt.Println("Error:", err)
+			fmt.Fprintf(os.Stderr, "❌ Error removing tag: %v\n", err)
 			return
 		}
 		if !removed {
-			fmt.Printf("Error: Tag \"%s\" not found on \"%s\"\n", tag, media.Title)
+			fmt.Fprintf(os.Stderr, "❌ Tag \"%s\" not found on \"%s\"\n", tag, media.Title)
 			return
 		}
 
@@ -109,7 +109,7 @@ var tagRemoveCmd = &cobra.Command{
 		if media.Year > 0 {
 			year = fmt.Sprintf(" (%d)", media.Year)
 		}
-		fmt.Printf("Tag \"%s\" removed from \"%s%s\"\n", tag, media.Title, year)
+		fmt.Printf("✅ Tag \"%s\" removed from \"%s%s\"\n", tag, media.Title, year)
 	},
 }
 
@@ -129,19 +129,19 @@ var tagListCmd = &cobra.Command{
 		if len(args) == 1 {
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
-				fmt.Println("Error: Invalid ID —", args[0])
+				fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", args[0])
 				return
 			}
 
 			media, err := d.GetMediaByID(int64(id))
 			if err != nil || media == nil {
-				fmt.Println("Error: Media not found with ID", id)
+				fmt.Fprintf(os.Stderr, "❌ Media not found with ID %d\n", id)
 				return
 			}
 
 			tags, err := d.GetTagsByMediaID(id)
 			if err != nil {
-				fmt.Println("Error:", err)
+				fmt.Fprintf(os.Stderr, "❌ Error reading tags: %v\n", err)
 				return
 			}
 
@@ -151,27 +151,27 @@ var tagListCmd = &cobra.Command{
 			}
 
 			if len(tags) == 0 {
-				fmt.Printf("No tags for \"%s%s\"\n", media.Title, year)
+				fmt.Printf("📭 No tags for \"%s%s\"\n", media.Title, year)
 				return
 			}
 
-			fmt.Printf("Tags for \"%s%s\":\n", media.Title, year)
+			fmt.Printf("🏷️  Tags for \"%s%s\":\n", media.Title, year)
 			for _, t := range tags {
 				fmt.Printf("  • %s\n", t)
 			}
 		} else {
 			tagCounts, err := d.GetAllTagCounts()
 			if err != nil {
-				fmt.Println("Error:", err)
+				fmt.Fprintf(os.Stderr, "❌ Error reading tags: %v\n", err)
 				return
 			}
 
 			if len(tagCounts) == 0 {
-				fmt.Println("No tags in library")
+				fmt.Println("📭 No tags in library")
 				return
 			}
 
-			fmt.Println("All tags:")
+			fmt.Println("🏷️  All tags:")
 			for _, tc := range tagCounts {
 				fmt.Printf("  %s (%d)\n", tc.Tag, tc.Count)
 			}
