@@ -153,30 +153,50 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 
 	// Collect video files based on scan mode
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
+	useTable := scanFormat == "table"
+
+	if useTable {
+		printScanTableHeader()
+	}
 
 	if scanDryRun {
-		for _, vf := range videoFiles {
-			totalFiles++
-			result := cleaner.Clean(vf.Name)
-			fmt.Printf("  📄 %s\n", vf.Name)
-			fmt.Printf("     → %s", result.CleanTitle)
-			if result.Year > 0 {
-				fmt.Printf(" (%d)", result.Year)
+		if useTable {
+			rows, mc, tc := buildDryRunTableRows(videoFiles)
+			for _, row := range rows {
+				printScanTableRow(row)
 			}
-			fmt.Printf(" [%s]\n", result.Type)
-			fmt.Printf("     📂 %s\n\n", vf.FullPath)
-			if result.Type == "movie" {
-				movieCount++
-			} else {
-				tvCount++
+			totalFiles = len(rows)
+			movieCount = mc
+			tvCount = tc
+		} else {
+			for _, vf := range videoFiles {
+				totalFiles++
+				result := cleaner.Clean(vf.Name)
+				fmt.Printf("  📄 %s\n", vf.Name)
+				fmt.Printf("     → %s", result.CleanTitle)
+				if result.Year > 0 {
+					fmt.Printf(" (%d)", result.Year)
+				}
+				fmt.Printf(" [%s]\n", result.Type)
+				fmt.Printf("     📂 %s\n\n", vf.FullPath)
+				if result.Type == "movie" {
+					movieCount++
+				} else {
+					tvCount++
+				}
 			}
 		}
 	} else {
 		client := tmdb.NewClient(apiKey)
 		for _, vf := range videoFiles {
 			processVideoFile(vf, database, client, apiKey, outputDir,
-				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems)
+				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
+				useTable)
 		}
+	}
+
+	if useTable {
+		printScanTableFooter()
 	}
 
 	// Log scan history
