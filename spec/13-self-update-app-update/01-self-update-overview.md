@@ -43,19 +43,24 @@ Used when the binary was installed from a source repository:
 
 ```
 1. Resolve the source repo location
-2. Pull latest code (git pull --ff-only)
-3. Resolve dependencies (go mod tidy)
-4. Build new binary (go build with ldflags)
-5. Deploy to the installed location (rename-first)
-6. Verify version
-7. Clean up
+2. If the repo is missing, clone a fresh copy next to the binary
+3. If an existing repo is found, verify it is clean
+4. Pull latest code (git pull --ff-only) for existing repos only
+5. Resolve dependencies (go mod tidy)
+6. Build new binary (go build with ldflags)
+7. Deploy to the installed location (rename-first)
+8. Verify version
+9. Clean up
 ```
 
 **Current mahin implementation** (`updater/updater.go`):
 - Checks git is installed and in PATH
-- Verifies no local changes (clean working tree)
-- Runs `git pull --ff-only` (safe, no merge conflicts)
-- Reports before/after commit SHAs
+- Resolves the repo from the binary directory, current working directory, or sibling clone path
+- Clones a fresh repo next to the binary when no local repo exists
+- Treats a fresh clone as **bootstrap success**, not as an "already up to date" result
+- Verifies no local changes only for the resolved local repo
+- Runs `git pull --ff-only` (safe, no merge conflicts) for existing repos
+- Reports either **bootstrap success**, **already up to date**, or **old→new commit SHAs**
 - User runs `run.ps1` or `build.ps1` for rebuild + deploy
 
 ### Strategy 2: Binary-Based Update (Download from Releases) — Future
@@ -82,7 +87,8 @@ This strategy requires no Go toolchain on the end-user's machine.
 | Signal | Strategy |
 |--------|----------|
 | `.git` directory exists in binary's parent path | Source-based |
-| No `.git` directory found | Binary-based |
+| Sibling source clone exists next to binary | Source-based |
+| No local source repo found but git is available | Source-based with bootstrap clone |
 | User passes `--from-source` flag | Source-based |
 | User passes `--from-release` flag | Binary-based |
 
@@ -90,11 +96,12 @@ This strategy requires no Go toolchain on the end-user's machine.
 
 ## Acceptance Criteria
 
-- GIVEN a clean git repo WHEN `mahin self-update` runs THEN the latest code is pulled
+- GIVEN a clean existing git repo WHEN `mahin self-update` runs THEN the latest code is pulled
+- GIVEN no local repo exists WHEN `mahin self-update` runs THEN it clones a fresh repo next to the binary and reports bootstrap success
 - GIVEN local changes WHEN `mahin self-update` runs THEN it refuses with an error message
 - GIVEN git is not installed WHEN `mahin self-update` runs THEN a clear error is shown
-- GIVEN the repo is already at latest WHEN `mahin self-update` runs THEN it reports "already up to date"
+- GIVEN the repo is already at latest WHEN `mahin self-update` runs THEN it reports "already up to date" only for an existing repo with no new commits
 
 ---
 
-*Self-update overview — updated: 2026-04-10*
+*Self-update overview — updated: 2026-04-13*

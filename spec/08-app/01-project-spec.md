@@ -237,18 +237,20 @@ All data resides in `./data/`:
 ### 4.3 `movie-cli self-update`
 
 **Aliases**: `update`  
-**Purpose**: Pull latest code from the cloned git repository.  
+**Purpose**: Sync the local source repo to the latest code, or bootstrap a fresh local repo if none exists.  
 **Args**: None  
 **Behavior**:
 1. Verify `git` is in PATH
-2. `git rev-parse --show-toplevel` — must be inside a git repo
-3. `git status --porcelain` — repo must be clean (no uncommitted changes)
-4. Record current commit (`git rev-parse --short HEAD`)
-5. `git pull --ff-only`
-6. Record new commit
-7. Report: already up-to-date OR show old→new commit
+2. Resolve repo path by checking the binary directory, current working directory, and a sibling `movie-cli-v3/` folder
+3. If no local repo exists, clone a fresh copy next to the binary
+4. If an existing repo is found, run `git status --porcelain` — repo must be clean (no uncommitted changes)
+5. For an existing repo, record current commit (`git rev-parse --short HEAD`)
+6. For an existing repo, run `git pull --ff-only`
+7. Record resulting commit
+8. Report one of: bootstrap success, already up-to-date, or old→new commit
+9. Instruct the user to rebuild with `pwsh run.ps1`
 
-**Error cases**: git not found, not in a repo, dirty working tree, merge conflicts.
+**Error cases**: git not found, clone failed, dirty working tree, merge conflicts.
 
 ### 4.4 `movie-cli movie config`
 

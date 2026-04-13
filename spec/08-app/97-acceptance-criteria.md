@@ -27,14 +27,15 @@
 
 ## AC-03: Self-Update Command
 
-**GIVEN** the CLI is run inside a clean git repository  
+**GIVEN** the CLI resolves an existing clean git repository  
 **WHEN** the user runs `movie self-update`  
 **THEN** `git pull --ff-only` is executed and the old→new commit hashes are displayed
 
 **Edge Cases:**
+- **GIVEN** no local repo exists **WHEN** self-update runs **THEN** a fresh clone is created next to the binary and the output reports bootstrap success
 - **GIVEN** git is not in PATH **WHEN** self-update runs **THEN** a clear error is shown: git not found
 - **GIVEN** the working tree has uncommitted changes **WHEN** self-update runs **THEN** a clear error is shown: dirty working tree
-- **GIVEN** there are no new commits **WHEN** self-update runs **THEN** the output says already up-to-date
+- **GIVEN** there are no new commits in an existing repo **WHEN** self-update runs **THEN** the output says already up-to-date
 
 ---
 

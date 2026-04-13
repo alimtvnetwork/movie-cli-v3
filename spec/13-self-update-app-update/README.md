@@ -29,8 +29,12 @@ A running binary **cannot overwrite itself** on Windows. The entire update archi
 
 ## Current Implementation
 
-The mahin CLI uses **Strategy 1 (Source-Based Update)** via `git pull --ff-only`:
-- `mahin self-update` → pulls latest source → user rebuilds via `run.ps1` or `build.ps1`
+The mahin CLI uses **Strategy 1 (Source-Based Update)** with explicit
+**repo bootstrap** handling:
+- `mahin self-update` resolves the repo from the binary directory, the current working directory, or a sibling `movie-cli-v3/` clone
+- If no local repo exists, it clones a fresh copy next to the binary and treats that as a **bootstrap success**
+- A fresh clone must **not** be reported as "already up to date"
+- If an existing repo is found, it runs `git pull --ff-only`, then the user rebuilds via `run.ps1` or `build.ps1`
 - See `updater/updater.go` and `cmd/update.go`
 
 ## Future Enhancement
@@ -52,4 +56,4 @@ The mahin CLI uses **Strategy 1 (Source-Based Update)** via `git pull --ff-only`
 
 ---
 
-*Self-update specs — updated: 2026-04-10*
+*Self-update specs — updated: 2026-04-13*
