@@ -18,6 +18,7 @@ import (
 var scanRecursive bool
 var scanDepth int
 var scanDryRun bool
+var scanFormat string
 
 var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
