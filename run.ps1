@@ -436,15 +436,19 @@ function Build-Binary {
 
         $buildDate = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
 
-        # Try to read version from a version file or tag
-        $versionTag = (git describe --tags --abbrev=0 2>&1)
-        if ($LASTEXITCODE -ne 0) { $versionTag = "dev" }
-        $versionTag = "$versionTag".Trim()
+        $sourceVersion = "dev"
+        $versionFile = Join-Path $RepoRoot "version" "version.go"
+        if (Test-Path $versionFile) {
+            $versionMatch = Select-String -Path $versionFile -Pattern 'Version\s*=\s*"([^"]+)"' -AllMatches
+            if ($versionMatch -and $versionMatch.Matches.Count -gt 0) {
+                $sourceVersion = $versionMatch.Matches[0].Groups[1].Value.Trim()
+            }
+        }
 
         $ErrorActionPreference = $prevPref
 
-        $ldflags = "-s -w -X main.Version=$versionTag -X main.Commit=$gitCommit -X main.BuildDate=$buildDate"
-        Write-Info "Version: $versionTag | Commit: $gitCommit"
+        $ldflags = "-s -w -X github.com/alimtvnetwork/movie-cli-v3/version.Commit=$gitCommit -X github.com/alimtvnetwork/movie-cli-v3/version.BuildDate=$buildDate"
+        Write-Info "Version: $sourceVersion | Commit: $gitCommit"
 
         # Build
         Write-Info "Compiling to $outputPath..."
@@ -555,6 +559,20 @@ function Deploy-Binary {
         }
     }
 
+    # Copy changelog next to the deployed binary so `movie changelog` works outside the repo root
+    $repoChangelog = Join-Path $RepoRoot "CHANGELOG.md"
+    $deployChangelog = Join-Path $deployPath "CHANGELOG.md"
+    if (Test-Path $repoChangelog) {
+        try {
+            Copy-Item -Path $repoChangelog -Destination $deployChangelog -Force
+            Write-Info "Copied CHANGELOG.md to deploy directory"
+        } catch {
+            Write-Warn "Could not copy CHANGELOG.md to deploy directory: $_"
+        }
+    } else {
+        Write-Warn "CHANGELOG.md not found in repo root"
+    }
+
     # Clean up backup on success
     if (Test-Path $backupFile) {
         try {
@@ -578,6 +596,20 @@ function Deploy-Binary {
         Write-Warn "Deployed but 'version' check failed — may be OK"
     }
 
+    if (Test-Path $deployChangelog) {
+        $prevPref = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        $changelogVerify = & $destFile changelog --latest 2>&1
+        $changelogExit = $LASTEXITCODE
+        $ErrorActionPreference = $prevPref
+
+        if ($changelogExit -eq 0) {
+            Write-Success "Verified deployed changelog"
+        } else {
+            Write-Warn "CHANGELOG.md was deployed, but 'changelog --latest' failed"
+        }
+    }
+
     # PATH check
     $pathDirs = $env:PATH -split [IO.Path]::PathSeparator
     $inPath = $pathDirs | Where-Object { $_ -eq $deployPath }
@@ -586,6 +618,16 @@ function Deploy-Binary {
         Write-Info "Add it to PATH to run '$($binaryName -replace '\.exe$','')' from anywhere"
     } else {
         Write-Success "Deploy path is in PATH"
+    }
+
+    $resolvedMovie = Get-Command movie -ErrorAction SilentlyContinue
+    if ($resolvedMovie -and $resolvedMovie.Source -and (Test-Path $resolvedMovie.Source)) {
+        $pathMovie = (Resolve-Path $resolvedMovie.Source).Path
+        $deployMovie = (Resolve-Path $destFile).Path
+        if ($pathMovie -ne $deployMovie) {
+            Write-Warn "PATH resolves 'movie' to a different binary: $pathMovie"
+            Write-Info "Run '$destFile version' or move $deployPath earlier in PATH to use the newly deployed build"
+        }
     }
 
     # Copy data directory if configured
@@ -718,11 +760,13 @@ if (-not $NoDeploy) {
     $deployedBinary = $builtBinary
 }
 
-# Show deployed version
+# Show the version from the binary that was just built/deployed
 $activeBinary = $deployedBinary
-$activeCmd = Get-Command movie -ErrorAction SilentlyContinue
-if ($activeCmd -and (Test-Path $activeCmd.Source)) {
-    $activeBinary = $activeCmd.Source
+if (-not $activeBinary -or -not (Test-Path $activeBinary)) {
+    $activeCmd = Get-Command movie -ErrorAction SilentlyContinue
+    if ($activeCmd -and $activeCmd.Source -and (Test-Path $activeCmd.Source)) {
+        $activeBinary = $activeCmd.Source
+    }
 }
 
 if ($activeBinary -and (Test-Path $activeBinary)) {
