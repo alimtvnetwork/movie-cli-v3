@@ -16,6 +16,7 @@ import (
 )
 
 var scanRecursive bool
+var scanDepth int
 
 var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
@@ -25,6 +26,7 @@ from TMDb, downloads thumbnails, and stores everything in the database.
 
 If no folder is specified, scans the current working directory.
 Use --recursive (-r) to scan all subdirectories recursively.
+Use --depth to limit how many levels deep the recursive scan goes.
 
 Results are saved to .movie-output/ inside the scanned folder, including:
   - summary.json   — full scan report with categories, counts, and per-item metadata
@@ -35,7 +37,8 @@ Examples:
   movie scan                     Scan current directory (top-level)
   movie scan ~/Movies            Scan specific folder
   movie scan -r                  Scan current directory recursively
-  movie scan ~/Movies --recursive`,
+  movie scan ~/Movies --recursive
+  movie scan -r --depth 2        Scan only 2 levels deep`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -43,6 +46,8 @@ Examples:
 func init() {
 	movieScanCmd.Flags().BoolVarP(&scanRecursive, "recursive", "r", false,
 		"scan all subdirectories recursively")
+	movieScanCmd.Flags().IntVarP(&scanDepth, "depth", "d", 0,
+		"max subdirectory depth for recursive scan (0 = unlimited)")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
@@ -121,7 +126,11 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("🔍 Scanning: %s\n", scanDir)
 	if scanRecursive {
-		fmt.Println("🔄 Mode: recursive (all subdirectories)")
+		if scanDepth > 0 {
+			fmt.Printf("🔄 Mode: recursive (max depth: %d)\n", scanDepth)
+		} else {
+			fmt.Println("🔄 Mode: recursive (all subdirectories)")
+		}
 	}
 	fmt.Printf("📁 Output:   %s\n\n", outputDir)
 
@@ -129,7 +138,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	var scannedItems []db.Media
 
 	// Collect video files based on scan mode
-	videoFiles := collectVideoFiles(scanDir, scanRecursive)
+	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
 
 	for _, vf := range videoFiles {
 		result := processVideoFile(vf, database, client, apiKey, outputDir,
@@ -170,11 +179,14 @@ type videoFile struct {
 }
 
 // collectVideoFiles finds video files in the given directory.
-// When recursive is true, it walks all subdirectories.
-func collectVideoFiles(scanDir string, recursive bool) []videoFile {
+// When recursive is true, it walks subdirectories up to maxDepth levels (0 = unlimited).
+func collectVideoFiles(scanDir string, recursive bool, maxDepth int) []videoFile {
 	var files []videoFile
 
 	if recursive {
+		scanDir = filepath.Clean(scanDir)
+		baseParts := len(splitPath(scanDir))
+
 		_ = filepath.WalkDir(scanDir, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "  ⚠️  Cannot access %s: %v\n", path, err)
@@ -186,7 +198,21 @@ func collectVideoFiles(scanDir string, recursive bool) []videoFile {
 				if base == ".movie-output" || (strings.HasPrefix(base, ".") && base != ".") {
 					return filepath.SkipDir
 				}
+				// Enforce depth limit
+				if maxDepth > 0 {
+					dirParts := len(splitPath(filepath.Clean(path)))
+					if dirParts-baseParts > maxDepth {
+						return filepath.SkipDir
+					}
+				}
 				return nil
+			}
+			// Check depth for files too
+			if maxDepth > 0 {
+				fileParts := len(splitPath(filepath.Clean(filepath.Dir(path))))
+				if fileParts-baseParts > maxDepth {
+					return nil
+				}
 			}
 			if cleaner.IsVideoFile(d.Name()) {
 				// Use parent directory name if it differs from scanDir, else use filename
@@ -232,6 +258,22 @@ func collectVideoFiles(scanDir string, recursive bool) []videoFile {
 	}
 
 	return files
+}
+
+// splitPath splits a filepath into its components.
+func splitPath(p string) []string {
+	var parts []string
+	for p != "" && p != "." && p != "/" && p != string(filepath.Separator) {
+		dir, file := filepath.Split(p)
+		if file != "" {
+			parts = append(parts, file)
+		}
+		p = filepath.Clean(dir)
+		if p == dir {
+			break
+		}
+	}
+	return parts
 }
 
 // processVideoFile handles a single video file: clean, check DB, fetch TMDb, insert, write JSON.

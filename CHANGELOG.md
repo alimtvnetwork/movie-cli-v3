@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.5.0
+
+### Added
+- **`movie scan --depth N` (`-d`)** — limit recursive scan to N subdirectory levels (0 = unlimited); e.g. `movie scan -r -d 2`
+
 ## v1.4.0
 
 ### Fixed
