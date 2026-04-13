@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.7.1
+
+### Changed
+- **Refactored `movie_scan.go`** — split from ~500 lines into 4 focused files:
+  - `movie_scan.go` (~120 lines) — command definition, orchestrator, helpers
+  - `movie_scan_collect.go` (~110 lines) — video file discovery and path utilities
+  - `movie_scan_process.go` (~170 lines) — per-file processing and TMDb enrichment
+  - `movie_scan_table.go`, `movie_scan_json.go`, `movie_scan_summary.go` — unchanged
+
 ## v1.7.0
 
 ### Added
