@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.7.0
+
+### Added
+- **`movie scan --format table`** — display scan results as a formatted table with columns for #, filename, clean title, year, type, rating, and status; works with `--dry-run` too
+
 ## v1.6.0
 
 ### Added

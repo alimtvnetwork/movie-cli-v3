@@ -18,6 +18,7 @@ import (
 var scanRecursive bool
 var scanDepth int
 var scanDryRun bool
+var scanFormat string
 
 var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
@@ -41,7 +42,8 @@ Examples:
   movie scan -r                  Scan current directory recursively
   movie scan ~/Movies --recursive
   movie scan -r --depth 2        Scan only 2 levels deep
-  movie scan --dry-run            Preview files without writing to DB`,
+  movie scan --dry-run            Preview files without writing to DB
+  movie scan --format table       Show results as a formatted table`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -53,6 +55,8 @@ func init() {
 		"max subdirectory depth for recursive scan (0 = unlimited)")
 	movieScanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false,
 		"preview what would be scanned without writing to DB or .movie-output")
+	movieScanCmd.Flags().StringVar(&scanFormat, "format", "default",
+		"output format: default or table")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
@@ -149,30 +153,50 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 
 	// Collect video files based on scan mode
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
+	useTable := scanFormat == "table"
+
+	if useTable {
+		printScanTableHeader()
+	}
 
 	if scanDryRun {
-		for _, vf := range videoFiles {
-			totalFiles++
-			result := cleaner.Clean(vf.Name)
-			fmt.Printf("  📄 %s\n", vf.Name)
-			fmt.Printf("     → %s", result.CleanTitle)
-			if result.Year > 0 {
-				fmt.Printf(" (%d)", result.Year)
+		if useTable {
+			rows, mc, tc := buildDryRunTableRows(videoFiles)
+			for _, row := range rows {
+				printScanTableRow(row)
 			}
-			fmt.Printf(" [%s]\n", result.Type)
-			fmt.Printf("     📂 %s\n\n", vf.FullPath)
-			if result.Type == "movie" {
-				movieCount++
-			} else {
-				tvCount++
+			totalFiles = len(rows)
+			movieCount = mc
+			tvCount = tc
+		} else {
+			for _, vf := range videoFiles {
+				totalFiles++
+				result := cleaner.Clean(vf.Name)
+				fmt.Printf("  📄 %s\n", vf.Name)
+				fmt.Printf("     → %s", result.CleanTitle)
+				if result.Year > 0 {
+					fmt.Printf(" (%d)", result.Year)
+				}
+				fmt.Printf(" [%s]\n", result.Type)
+				fmt.Printf("     📂 %s\n\n", vf.FullPath)
+				if result.Type == "movie" {
+					movieCount++
+				} else {
+					tvCount++
+				}
 			}
 		}
 	} else {
 		client := tmdb.NewClient(apiKey)
 		for _, vf := range videoFiles {
 			processVideoFile(vf, database, client, apiKey, outputDir,
-				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems)
+				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
+				useTable)
 		}
+	}
+
+	if useTable {
+		printScanTableFooter()
 	}
 
 	// Log scan history
@@ -322,16 +346,19 @@ func processVideoFile(
 	apiKey, outputDir string,
 	totalFiles, movieCount, tvCount, skipped *int,
 	scannedItems *[]db.Media,
+	useTable bool,
 ) bool {
 	*totalFiles++
 
 	result := cleaner.Clean(vf.Name)
-	fmt.Printf("  📄 %s\n", vf.Name)
-	fmt.Printf("     → %s", result.CleanTitle)
-	if result.Year > 0 {
-		fmt.Printf(" (%d)", result.Year)
+	if !useTable {
+		fmt.Printf("  📄 %s\n", vf.Name)
+		fmt.Printf("     → %s", result.CleanTitle)
+		if result.Year > 0 {
+			fmt.Printf(" (%d)", result.Year)
+		}
+		fmt.Printf(" [%s]\n", result.Type)
 	}
-	fmt.Printf(" [%s]\n", result.Type)
 
 	// Check if already in DB by path
 	existing, searchErr := database.SearchMedia(result.CleanTitle)
@@ -340,7 +367,16 @@ func processVideoFile(
 	}
 	for i := range existing {
 		if existing[i].OriginalFilePath == vf.FullPath {
-			fmt.Println("     ⏩ Already in database, skipping")
+			if useTable {
+				printScanTableRow(buildMediaTableRow(*totalFiles, &db.Media{
+					OriginalFileName: vf.Name,
+					CleanTitle:       result.CleanTitle,
+					Year:             result.Year,
+					Type:             result.Type,
+				}, "skipped"))
+			} else {
+				fmt.Println("     ⏩ Already in database, skipping")
+			}
 			*skipped++
 			if result.Type == "movie" {
 				*movieCount++
@@ -394,12 +430,18 @@ func processVideoFile(
 
 	*scannedItems = append(*scannedItems, *m)
 
+	if useTable {
+		printScanTableRow(buildMediaTableRow(*totalFiles, m, "new"))
+	}
+
 	if m.Type == "movie" {
 		*movieCount++
 	} else {
 		*tvCount++
 	}
-	fmt.Println()
+	if !useTable {
+		fmt.Println()
+	}
 	return true
 }
 
