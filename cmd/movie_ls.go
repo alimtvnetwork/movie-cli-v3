@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -13,13 +14,42 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
+var lsFormat string
+
 var movieLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List scanned movies and TV shows from your library",
 	Long: `Lists scan-indexed movies and TV shows (items with a known file path).
 Only items added via 'movie scan' are shown.
-Press N for next page, P for previous, Q to quit.`,
+Press N for next page, P for previous, Q to quit.
+
+Use --format json to output all items as JSON to stdout for piping.`,
 	Run: runMovieLs,
+}
+
+func init() {
+	movieLsCmd.Flags().StringVar(&lsFormat, "format", "default",
+		"output format: default or json")
+}
+
+// lsJSONItem represents a single media item in JSON output.
+type lsJSONItem struct {
+	ID         int64   `json:"id"`
+	Title      string  `json:"title"`
+	CleanTitle string  `json:"clean_title"`
+	Year       int     `json:"year,omitempty"`
+	Type       string  `json:"type"`
+	TmdbID     int     `json:"tmdb_id,omitempty"`
+	ImdbID     string  `json:"imdb_id,omitempty"`
+	TmdbRating float64 `json:"tmdb_rating,omitempty"`
+	ImdbRating float64 `json:"imdb_rating,omitempty"`
+	Popularity float64 `json:"popularity,omitempty"`
+	Genre      string  `json:"genre,omitempty"`
+	Director   string  `json:"director,omitempty"`
+	Runtime    int     `json:"runtime,omitempty"`
+	Language   string  `json:"language,omitempty"`
+	FilePath   string  `json:"file_path,omitempty"`
+	FileSize   int64   `json:"file_size,omitempty"`
 }
 
 func runMovieLs(cmd *cobra.Command, args []string) {
@@ -30,6 +60,52 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
+	if lsFormat == "json" {
+		runMovieLsJSON(database)
+		return
+	}
+
+	runMovieLsInteractive(database)
+}
+
+func runMovieLsJSON(database *db.DB) {
+	allMedia, err := database.ListMedia(0, 100000)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		return
+	}
+
+	items := make([]lsJSONItem, len(allMedia))
+	for i := range allMedia {
+		m := &allMedia[i]
+		items[i] = lsJSONItem{
+			ID:         m.ID,
+			Title:      m.Title,
+			CleanTitle: m.CleanTitle,
+			Year:       m.Year,
+			Type:       m.Type,
+			TmdbID:     m.TmdbID,
+			ImdbID:     m.ImdbID,
+			TmdbRating: m.TmdbRating,
+			ImdbRating: m.ImdbRating,
+			Popularity: m.Popularity,
+			Genre:      m.Genre,
+			Director:   m.Director,
+			Runtime:    m.Runtime,
+			Language:   m.Language,
+			FilePath:   m.CurrentFilePath,
+			FileSize:   m.FileSize,
+		}
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if encErr := enc.Encode(items); encErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ JSON encode error: %v\n", encErr)
+	}
+}
+
+func runMovieLsInteractive(database *db.DB) {
 	pageSizeStr, cfgErr := database.GetConfig("page_size")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		fmt.Fprintf(os.Stderr, "⚠️  Config read error (page_size): %v\n", cfgErr)
@@ -117,7 +193,6 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 			fmt.Println("👋 Bye!")
 			return
 		default:
-			// Try to parse as number for detail view
 			if num, parseErr := strconv.Atoi(input); parseErr == nil && num > 0 && num <= total {
 				showMediaDetail(database, int64(num))
 				fmt.Print("\nPress Enter to continue...")
