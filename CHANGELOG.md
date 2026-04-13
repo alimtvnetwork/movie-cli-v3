@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.11.0
+
+### Added
+- **`movie search --format json`** — output TMDb search results as a JSON array to stdout (no interactive prompt); pipeable to `jq` and scripts
+- **`movie info --format json`** — output media detail as a JSON object to stdout; includes source field ("local" or "tmdb")
+
 ## v1.10.0
 
 ### Added

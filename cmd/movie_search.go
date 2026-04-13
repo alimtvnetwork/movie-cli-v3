@@ -16,16 +16,26 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
+var searchFormat string
+
 var movieSearchCmd = &cobra.Command{
 	Use:   "search [name]",
 	Short: "Search TMDb for a movie or TV show and save to database",
 	Long: `Searches the TMDb API for movies/TV shows matching the query.
 Fetches full metadata (rating, genres, cast, crew, poster) and saves
 to the local database. Categorizes as Movie or TV Show automatically.
-Does NOT require the file to exist in your library.`,
+Does NOT require the file to exist in your library.
+
+Use --format json to output search results as JSON (no interactive prompt).`,
 	Args: cobra.MinimumNArgs(1),
 	Run:  runMovieSearch,
 }
+
+func init() {
+	movieSearchCmd.Flags().StringVar(&searchFormat, "format", "", "Output format: json")
+}
+
+
 
 func runMovieSearch(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
@@ -51,7 +61,9 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 
 	client := tmdb.NewClient(apiKey)
 	query := strings.Join(args, " ")
-	fmt.Printf("🔎 Searching TMDb for: %s\n\n", query)
+	if searchFormat != "json" {
+		fmt.Printf("🔎 Searching TMDb for: %s\n\n", query)
+	}
 
 	// Search TMDb API
 	results, searchErr := client.SearchMulti(query)
@@ -61,7 +73,17 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	}
 
 	if len(results) == 0 {
-		fmt.Println("📭 No results found on TMDb.")
+		if searchFormat == "json" {
+			fmt.Println("[]")
+		} else {
+			fmt.Println("📭 No results found on TMDb.")
+		}
+		return
+	}
+
+	// JSON mode: output results and exit (no interactive prompt)
+	if searchFormat == "json" {
+		printSearchResultsJSON(results)
 		return
 	}
 
