@@ -19,7 +19,14 @@ var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
 	Short: "Scan a folder for movies and TV shows",
 	Long: `Scans a folder for video files, cleans filenames, fetches metadata
-from TMDb, downloads thumbnails, and stores everything in the database.`,
+from TMDb, downloads thumbnails, and stores everything in the database.
+
+If no folder is specified, scans the current working directory.
+
+Results are saved to .movie-output/ inside the scanned folder, including:
+  - summary.json   — full scan report with categories, counts, and per-item metadata
+  - json/movie/    — individual JSON files per movie
+  - json/tv/       — individual JSON files per TV show`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -37,14 +44,13 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	if len(args) > 0 {
 		scanDir = args[0]
 	} else {
-		scanDir, err = database.GetConfig("scan_dir")
-		if err != nil && err.Error() != "sql: no rows in result set" {
-			fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", err)
-		}
-		if scanDir == "" {
-			fmt.Fprintln(os.Stderr, "❌ No folder specified. Use: movie scan <folder>")
+		// Default to current working directory
+		scanDir, err = os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Cannot determine current directory: %v\n", err)
 			return
 		}
+		fmt.Printf("📂 No folder specified — scanning current directory\n\n")
 	}
 
 	// Expand ~ to home
@@ -82,9 +88,28 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 
 	client := tmdb.NewClient(apiKey)
 
-	fmt.Printf("🔍 Scanning: %s\n\n", scanDir)
+	// Set up .movie-output directory inside the scanned folder
+	outputDir := filepath.Join(scanDir, ".movie-output")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Cannot create output directory: %v\n", err)
+		return
+	}
+	jsonMovieDir := filepath.Join(outputDir, "json", "movie")
+	jsonTVDir := filepath.Join(outputDir, "json", "tv")
+	if err := os.MkdirAll(jsonMovieDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Cannot create json/movie dir: %v\n", err)
+		return
+	}
+	if err := os.MkdirAll(jsonTVDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Cannot create json/tv dir: %v\n", err)
+		return
+	}
+
+	fmt.Printf("🔍 Scanning: %s\n", scanDir)
+	fmt.Printf("📁 Output:   %s\n\n", outputDir)
 
 	var totalFiles, movieCount, tvCount, skipped int
+	var scannedItems []db.Media
 
 	entries, readErr := os.ReadDir(scanDir)
 	if readErr != nil {
@@ -237,9 +262,11 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		}
 
 		// Write JSON metadata file
-		if jsonErr := writeMediaJSON(database.BasePath, m); jsonErr != nil {
+		if jsonErr := writeMediaJSON(outputDir, m); jsonErr != nil {
 			fmt.Fprintf(os.Stderr, "     ⚠️  JSON write error: %v\n", jsonErr)
 		}
+
+		scannedItems = append(scannedItems, *m)
 
 		if m.Type == "movie" {
 			movieCount++
@@ -261,5 +288,13 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	fmt.Printf("   TV Shows:    %d\n", tvCount)
 	if skipped > 0 {
 		fmt.Printf("   Skipped:     %d (already in DB)\n", skipped)
+	}
+	fmt.Printf("   Output:      %s\n", outputDir)
+
+	// Write summary.json to .movie-output/
+	if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems, totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not write summary.json: %v\n", summaryErr)
+	} else {
+		fmt.Printf("\n📋 Summary saved: %s\n", filepath.Join(outputDir, "summary.json"))
 	}
 }
