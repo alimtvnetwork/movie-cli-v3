@@ -89,31 +89,32 @@ func gitOutput(dir string, args ...string) (string, error) {
 //
 // If none have a .git directory, it clones the repo fresh next to the binary.
 func findRepoPath() (string, error) {
-	// 1. Try the binary's own directory (handles deployed-from-repo case)
-	exe, err := os.Executable()
-	if err == nil {
+	// 1. Try the binary's own directory
+	exe, exeErr := os.Executable()
+	if exeErr == nil {
+		exe, _ = filepath.EvalSymlinks(exe) // resolve symlinks
 		exeDir := filepath.Dir(exe)
-		if p, err := gitOutput(exeDir, "rev-parse", "--show-toplevel"); err == nil {
+		if p, gitErr := gitOutput(exeDir, "rev-parse", "--show-toplevel"); gitErr == nil {
 			return p, nil
 		}
 
-		// 3. Check for a clone next to the binary: <exeDir>/movie-cli-v3/
+		// Check for a clone next to the binary: <exeDir>/movie-cli-v3/
 		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
-		if p, err := gitOutput(cloneDir, "rev-parse", "--show-toplevel"); err == nil {
+		if p, gitErr := gitOutput(cloneDir, "rev-parse", "--show-toplevel"); gitErr == nil {
 			return p, nil
 		}
 	}
 
-	// 2. Try CWD (works when running from within the repo)
+	// 2. Try CWD
 	cwd, cwdErr := os.Getwd()
 	if cwdErr == nil {
-		if p, err := gitOutput(cwd, "rev-parse", "--show-toplevel"); err == nil {
+		if p, gitErr := gitOutput(cwd, "rev-parse", "--show-toplevel"); gitErr == nil {
 			return p, nil
 		}
 	}
 
-	// 4. No repo found anywhere — clone it next to the binary
-	if exe != "" {
+	// 3. No repo found — clone next to the binary
+	if exeErr == nil {
 		exeDir := filepath.Dir(exe)
 		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
 		fmt.Printf("📥 No local repo found. Cloning to: %s\n", cloneDir)
