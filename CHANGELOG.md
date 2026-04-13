@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.13.0
+
+### Fixed
+- **`movie update` fresh-clone flow** — when no local repo exists, a new clone is now reported as bootstrap success instead of incorrectly saying "Already up to date"
+- **Self-update specs** — documented repo bootstrap vs existing-repo pull behavior using the GitMap-aligned update flow
+
 ## v1.12.0
 
 ### Added
