@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.2.0
+
+### Changed
+- **`movie scan` defaults to current directory** — running `movie scan` without arguments now scans the CWD instead of a config-stored `scan_dir` path
+- **Scan output to `.movie-output/`** — all scan results (per-item JSON, summary.json with categories/descriptions/metadata) are now written to `.movie-output/` inside the scanned folder
+
+### Added
+- **`summary.json`** — comprehensive scan report with total counts, genre-based categories, and full TMDb metadata per item
+
 ## v1.1.0
 
 ### Fixed
