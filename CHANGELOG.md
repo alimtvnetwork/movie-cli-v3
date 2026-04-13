@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## v1.1.0-dev
+## v1.1.0
 
 ### Fixed
 - **`run.ps1` version stamping** — now reads the version from `version/version.go` and injects commit/build date into the correct `version` package variables
