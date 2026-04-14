@@ -24,7 +24,7 @@ type searchJSONItem struct {
 }
 
 // printSearchResultsJSON outputs search results as a JSON array to stdout.
-func printSearchResultsJSON(results []tmdb.MultiResult) {
+func printSearchResultsJSON(results []tmdb.SearchResult) {
 	items := make([]searchJSONItem, 0, len(results))
 	for i, r := range results {
 		if i >= 15 {

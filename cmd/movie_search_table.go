@@ -9,7 +9,7 @@ import (
 )
 
 // printSearchResultsTable outputs TMDb search results as a formatted table.
-func printSearchResultsTable(results []tmdb.MultiResult) {
+func printSearchResultsTable(results []tmdb.SearchResult) {
 	fmt.Println()
 	fmt.Printf("  %-3s │ %-35s │ %-6s │ %-8s │ %-6s │ %-6s\n",
 		"#", "Title", "Year", "Type", "Rating", "TMDb ID")

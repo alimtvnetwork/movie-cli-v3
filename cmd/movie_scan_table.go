@@ -109,13 +109,3 @@ func buildMediaTableRow(index int, m *db.Media, status string) scanTableRow {
 	}
 }
 
-// truncate shortens a string to maxLen, adding "…" if truncated.
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 1 {
-		return "…"
-	}
-	return s[:maxLen-1] + "…"
-}
