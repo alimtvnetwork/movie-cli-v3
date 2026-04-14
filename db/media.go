@@ -146,6 +146,43 @@ func (d *DB) CountMedia(mediaType string) (int, error) {
 	return count, err
 }
 
+// GetMediaByScanDir returns all media whose original_file_path starts with the given directory prefix.
+func (d *DB) GetMediaByScanDir(scanDir string) ([]Media, error) {
+	prefix := scanDir
+	// Ensure prefix ends with path separator for accurate matching
+	if prefix != "" && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' {
+		prefix += string([]byte{filepath.Separator})
+	}
+	rows, err := d.Query(`SELECT `+mediaColumns+`
+		FROM media WHERE original_file_path LIKE ?
+		ORDER BY clean_title ASC`, prefix+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanMediaRows(rows)
+}
+
+// DeleteMediaByIDs deletes multiple media records by their IDs.
+func (d *DB) DeleteMediaByIDs(ids []int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	tx, err := d.Begin()
+	if err != nil {
+		return 0, err
+	}
+	deleted := 0
+	for _, id := range ids {
+		if _, err := tx.Exec("DELETE FROM media WHERE id = ?", id); err != nil {
+			tx.Rollback()
+			return deleted, err
+		}
+		deleted++
+	}
+	return deleted, tx.Commit()
+}
+
 // FileSizeStats returns total file size, largest file size, and smallest file size (non-zero) across all media.
 func (d *DB) FileSizeStats() (total int64, largest int64, smallest int64, err error) {
 	err = d.QueryRow(`
