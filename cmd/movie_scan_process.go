@@ -86,7 +86,7 @@ func processVideoFile(
 
 	// Fetch metadata from TMDb
 	if hasTMDb {
-		enrichFromTMDb(client, database, m, result)
+		enrichFromTMDb(client, database, m, result, outputDir)
 	}
 
 	// Insert into database
