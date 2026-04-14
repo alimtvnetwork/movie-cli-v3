@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.22.0
+
+### Added
+- **`movie rest`** — starts a local REST API server (default port 8086, `--port` to override) exposing library endpoints: `GET /api/media`, `GET/DELETE/PATCH /api/media/{id}`, `GET /api/stats`; enables interactive features in the HTML report
+- **HTML report** — `movie scan` now generates `report.html` in `.movie-output/` with responsive card layout showing thumbnail, title, year, rating, genre, director, cast, description, and tagline; includes search, filter, and delete via REST API
+- **`templates/report.html`** — external HTML template file (not embedded in Go code); bundled via Go `embed` at compile time through `templates/embed.go`
+
+## v1.21.0
+
+### Added
+- **`movie db`** — prints the resolved database path, data directory, and record counts for debugging
+
+## v1.20.0
+
+### Changed
+- **Renamed `<package>/<package>.go` files** — `db/db.go` → `db/open.go`, `cleaner/cleaner.go` → `cleaner/parse.go`, `updater/updater.go` → `updater/run.go`, `version/version.go` → `version/info.go`; enforced as a permanent naming convention
+
+## v1.19.0
+
+### Added
+- **`movie history --format table`** — output move history as a formatted table with columns: #, Title, From, To, Date, Status
+
+## v1.18.0
+
+### Added
+- **Binary-relative data storage** — all data (database, thumbnails, JSON metadata) is now stored in `data/` next to the CLI binary, not the working directory
+- **`run.ps1` deploys data folder** — build script copies data directory alongside the deployed binary
+
 ## v1.17.0
 
 ### Added
