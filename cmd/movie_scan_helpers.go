@@ -9,6 +9,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 	"github.com/alimtvnetwork/movie-cli-v3/errlog"
+	"github.com/alimtvnetwork/movie-cli-v3/version"
 )
 
 // resolveScanDir determines and validates the scan directory from args.
@@ -60,9 +61,18 @@ func createOutputDirs(outputDir string) error {
 
 // printScanHeader prints the scan mode banner (gitmap-style box).
 func printScanHeader(scanDir, outputDir string) {
+	ver := version.Short()
+	// Pad version to center it in the box (38 chars inner width)
+	label := fmt.Sprintf("🎬  Movie CLI %s", ver)
+	padTotal := 38 - len(label) + 2 // +2 for emoji width
+	if padTotal < 0 {
+		padTotal = 0
+	}
+	padLeft := padTotal / 2
+	padRight := padTotal - padLeft
 	fmt.Println()
 	fmt.Println("  ╔══════════════════════════════════════╗")
-	fmt.Println("  ║         🎬  Movie CLI Scanner        ║")
+	fmt.Printf("  ║%s%s%s║\n", strings.Repeat(" ", padLeft), label, strings.Repeat(" ", padRight))
 	fmt.Println("  ╚══════════════════════════════════════╝")
 	fmt.Println()
 	fmt.Printf("  📂 Scanning: %s\n", scanDir)

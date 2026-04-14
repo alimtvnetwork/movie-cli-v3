@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.31.0
+
+### Added
+- **Version in CLI header box** — scan output now shows `🎬  Movie CLI v1.31.0` centered in the banner (matches gitmap style)
+
+### Changed
+- **Spec v1.1** (`spec/10-cli-output-spec.md`) — added flag reference table, JSON item schema, table column definitions, exit codes, flag interaction edge cases, metadata line priority order
+
 ## v1.30.0
 
 ### Added
