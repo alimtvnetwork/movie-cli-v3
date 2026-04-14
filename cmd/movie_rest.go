@@ -105,6 +105,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n🚀 Movie CLI REST server running on %s\n", url)
 	fmt.Println("   Press Ctrl+C to stop\n")
 	fmt.Printf("   Endpoints:\n")
+	fmt.Printf("     GET    /                       HTML library report\n")
 	fmt.Printf("     GET    /api/media\n")
 	fmt.Printf("     GET    /api/media/{id}\n")
 	fmt.Printf("     DELETE /api/media/{id}\n")
