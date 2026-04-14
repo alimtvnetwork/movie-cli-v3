@@ -85,6 +85,22 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	// Initialize error logger — writes to .movie-output/logs/error.txt + DB
+	if initErr := errlog.Init(outputDir, "scan"); initErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
+	} else {
+		defer errlog.Close()
+		// Wire DB writer
+		errlog.SetDBWriter(func(e errlog.Entry) {
+			if dbErr := database.InsertErrorLog(
+				e.Timestamp, string(e.Level), e.Source, e.Function,
+				e.Command, e.WorkDir, e.Message, e.StackTrace,
+			); dbErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
+			}
+		})
+	}
+
 	if !useJSON {
 		printScanHeader(scanDir, outputDir)
 	}
