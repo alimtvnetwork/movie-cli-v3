@@ -3,158 +3,270 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Movie CLI — Library Report</title>
+<title>Movie CLI — Library</title>
 <style>
-  :root { --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --border: #334155; --warn: #f59e0b; --purple: #a78bfa; }
+  :root {
+    --bg: #09090b; --bg-elevated: #18181b; --card: #1c1c22; --card-hover: #232329;
+    --text: #fafafa; --text-secondary: #a1a1aa; --muted: #71717a;
+    --accent: #6366f1; --accent-hover: #818cf8; --accent-glow: rgba(99,102,241,0.15);
+    --danger: #ef4444; --success: #22c55e; --warn: #f59e0b; --purple: #a78bfa;
+    --border: #27272a; --border-hover: #3f3f46;
+    --radius: 12px; --radius-sm: 8px; --radius-xs: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-lg: 0 10px 40px rgba(0,0,0,0.5);
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-  .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
-  header { text-align: center; margin-bottom: 2rem; }
-  header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-  header p { color: var(--muted); }
-  .stats { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; }
-  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; min-width: 120px; }
-  .stat .num { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
-  .stat .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
-  .filters { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .filters button { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
-  .filters button:hover { border-color: var(--accent); }
-  .filters button.active { background: var(--accent); border-color: var(--accent); }
-  .search { text-align: center; margin-bottom: 1.5rem; }
-  .search input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1rem; border-radius: 6px; width: 100%; max-width: 400px; font-size: 0.95rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
-  .card:hover { transform: translateY(-2px); }
-  .card.watched { border-color: var(--success); }
-  .card-top { display: flex; gap: 1rem; padding: 1rem; }
-  .card-thumb { width: 100px; min-height: 150px; border-radius: 6px; object-fit: cover; background: var(--border); flex-shrink: 0; }
-  .card-thumb-placeholder { width: 100px; min-height: 150px; border-radius: 6px; background: var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 2rem; flex-shrink: 0; }
-  .card-info { flex: 1; min-width: 0; }
-  .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
-  .card-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
-  .card-rating { color: #fbbf24; font-weight: 600; }
-  .card-genre { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
-  .card-genre span { background: var(--bg); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; color: var(--muted); }
-  .card-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
-  .card-tags .tag { background: var(--purple); color: #fff; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.65rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.2rem; }
-  .card-tags .tag:hover { opacity: 0.8; }
-  .card-tags .tag .tag-x { font-size: 0.55rem; opacity: 0.7; }
-  .card-tags .tag .tag-x:hover { opacity: 1; }
-  .card-desc { font-size: 0.8rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  .toolbar { position: sticky; top: 0; z-index: 20; background: rgba(9,9,11,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 0.75rem 1.5rem; }
+  .toolbar-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .toolbar-brand { font-size: 1.1rem; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; }
+  .toolbar-brand span { color: var(--accent); }
+  .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; width: 100%; }
+
+  /* Search */
+  .search-wrap { position: relative; flex: 1; max-width: 360px; }
+  .search-wrap svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  .search-input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 0.75rem 0.5rem 2.25rem; border-radius: var(--radius-sm); font-size: 0.85rem; transition: border-color 0.15s; }
+  .search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .search-input::placeholder { color: var(--muted); }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .filter-group { display: flex; align-items: center; gap: 0.4rem; }
+  .filter-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; margin-right: 0.25rem; }
+  .filter-pill { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.3rem 0.75rem; border-radius: 20px; cursor: pointer; font-size: 0.78rem; transition: all 0.15s; white-space: nowrap; }
+  .filter-pill:hover { border-color: var(--border-hover); color: var(--text); }
+  .filter-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .filter-select { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.3rem 0.5rem; border-radius: 20px; font-size: 0.78rem; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 1.5rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; }
+  .filter-select:focus { outline: none; border-color: var(--accent); }
+  .filter-select option { background: var(--bg-elevated); color: var(--text); }
+  .filter-divider { width: 1px; height: 24px; background: var(--border); }
+
+  /* Stats strip */
+  .stats-strip { display: flex; gap: 1.5rem; margin-left: auto; }
+  .stats-strip .stat-item { display: flex; align-items: baseline; gap: 0.35rem; }
+  .stats-strip .stat-num { font-size: 1rem; font-weight: 700; color: var(--accent); }
+  .stats-strip .stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  /* Results info */
+  .results-info { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1rem; }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: all 0.2s ease; }
+  .card:hover { background: var(--card-hover); border-color: var(--border-hover); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .card.watched { border-left: 3px solid var(--success); }
+  .card.removed { opacity: 0.2; pointer-events: none; transform: scale(0.98); }
+  .card-top { display: flex; gap: 0.85rem; padding: 1rem; }
+  .card-thumb { width: 90px; height: 135px; border-radius: var(--radius-xs); object-fit: cover; background: var(--bg-elevated); flex-shrink: 0; }
+  .card-thumb-placeholder { width: 90px; height: 135px; border-radius: var(--radius-xs); background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 1.5rem; flex-shrink: 0; }
+  .card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .card-title { font-size: 1rem; font-weight: 600; line-height: 1.3; }
+  .card-meta { font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .card-meta .sep { color: var(--border-hover); }
+  .card-rating { color: var(--warn); font-weight: 600; display: inline-flex; align-items: center; gap: 0.15rem; }
+  .card-genre { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .card-genre span { background: var(--bg); border: 1px solid var(--border); padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.65rem; color: var(--text-secondary); }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .card-tags .tag { background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.6rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.2rem; transition: all 0.15s; }
+  .card-tags .tag:hover { background: rgba(167,139,250,0.25); }
+  .card-tags .tag .tag-x { opacity: 0; font-size: 0.5rem; transition: opacity 0.15s; }
+  .card-tags .tag:hover .tag-x { opacity: 1; }
+  .card-desc { font-size: 0.75rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
+  .card-tagline { font-size: 0.72rem; color: var(--text-secondary); font-style: italic; }
   .card-middle { padding: 0 1rem 0.5rem; }
-  .tag-input { display: flex; gap: 0.3rem; margin-top: 0.4rem; }
-  .tag-input input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100px; }
-  .tag-input button { background: var(--accent); border: none; color: #fff; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
-  .card-bottom { padding: 0.75rem 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-  .card-bottom .director { font-size: 0.75rem; color: var(--muted); }
-  .card-actions { display: flex; gap: 0.4rem; }
-  .card-actions button { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: all 0.15s; }
-  .card-actions button:hover { border-color: var(--accent); color: var(--accent); }
-  .card-actions button.delete:hover { border-color: var(--danger); color: var(--danger); }
-  .card-actions button.watched-btn:hover { border-color: var(--success); color: var(--success); }
-  .card-actions button.similar-btn:hover { border-color: var(--warn); color: var(--warn); }
-  .card-actions button.is-watched { border-color: var(--success); color: var(--success); background: rgba(34,197,94,0.1); }
-  .card.removed { opacity: 0.3; pointer-events: none; }
-  .rest-banner { background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1.5rem; font-size: 0.85rem; }
-  .rest-banner code { background: var(--bg); padding: 0.2rem 0.5rem; border-radius: 4px; }
-  .toast { position: fixed; bottom: 1rem; right: 1rem; background: var(--success); color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.85rem; display: none; z-index: 100; }
+  .tag-add { display: inline-flex; gap: 0.25rem; }
+  .tag-add input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; width: 80px; }
+  .tag-add input:focus { outline: none; border-color: var(--accent); }
+  .tag-add button { background: var(--accent); border: none; color: #fff; width: 20px; height: 20px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .card-bottom { padding: 0.6rem 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+  .card-credits { font-size: 0.7rem; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+  .action-btn { background: none; border: 1px solid transparent; color: var(--muted); width: 30px; height: 30px; border-radius: var(--radius-xs); cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .action-btn:hover { background: var(--bg-elevated); border-color: var(--border); color: var(--text); }
+  .action-btn.delete:hover { color: var(--danger); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); }
+  .action-btn.watched-btn:hover { color: var(--success); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.1); }
+  .action-btn.similar-btn:hover { color: var(--warn); border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.1); }
+  .action-btn.is-watched { color: var(--success); background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); }
 
-  /* Similar modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 50; align-items: center; justify-content: center; }
+  /* Banner */
+  .rest-banner { background: var(--bg-elevated); border: 1px solid rgba(99,102,241,0.3); border-radius: var(--radius-sm); padding: 0.6rem 1rem; font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+  .rest-banner code { background: var(--bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--accent); }
+  .rest-banner .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+  .rest-banner.connected .dot { background: var(--success); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.7rem 1.2rem; border-radius: var(--radius-sm); font-size: 0.82rem; display: none; z-index: 100; box-shadow: var(--shadow-lg); backdrop-filter: blur(8px); transition: all 0.3s; }
+  .toast.success { background: rgba(34,197,94,0.9); color: #fff; }
+  .toast.error { background: rgba(239,68,68,0.9); color: #fff; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: none; z-index: 50; align-items: center; justify-content: center; }
   .modal-overlay.show { display: flex; }
-  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
-  .modal h2 { font-size: 1.2rem; margin-bottom: 1rem; }
-  .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
-  .modal-close:hover { color: var(--text); }
-  .similar-list { display: flex; flex-direction: column; gap: 0.75rem; }
-  .similar-item { display: flex; gap: 0.75rem; padding: 0.75rem; background: var(--bg); border-radius: 8px; }
-  .similar-item img { width: 50px; height: 75px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; max-width: 640px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+  .modal h2 { font-size: 1.1rem; margin-bottom: 1rem; font-weight: 600; }
+  .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; width: 32px; height: 32px; border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: var(--bg-elevated); color: var(--text); }
+  .similar-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .similar-item { display: flex; gap: 0.75rem; padding: 0.75rem; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); transition: border-color 0.15s; }
+  .similar-item:hover { border-color: var(--border-hover); }
+  .similar-item img { width: 45px; height: 67px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
   .similar-item-info { flex: 1; }
-  .similar-item-title { font-weight: 600; font-size: 0.9rem; }
-  .similar-item-meta { font-size: 0.75rem; color: var(--muted); }
-  .similar-item-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .similar-loading { text-align: center; padding: 2rem; color: var(--muted); }
-  .similar-empty { text-align: center; padding: 2rem; color: var(--muted); }
+  .similar-item-title { font-weight: 600; font-size: 0.85rem; }
+  .similar-item-meta { font-size: 0.72rem; color: var(--muted); }
+  .similar-item-desc { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .similar-loading, .similar-empty { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
 
-  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } .card-top { flex-direction: column; align-items: center; text-align: center; } }
+  /* Empty state */
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .toolbar-inner { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+    .search-wrap { max-width: none; }
+    .stats-strip { margin-left: 0; justify-content: center; }
+    .grid { grid-template-columns: 1fr; }
+    .filter-bar { justify-content: center; }
+  }
+  @media (max-width: 480px) {
+    .card-top { flex-direction: column; align-items: center; text-align: center; }
+    .card-genre, .card-tags { justify-content: center; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>🎬 Movie CLI Library</h1>
-    <p>Scanned: {{.ScannedFolder}} — {{.ScannedAt}}</p>
-  </header>
-
-  <div class="stats">
-    <div class="stat"><div class="num">{{.TotalFiles}}</div><div class="label">Total</div></div>
-    <div class="stat"><div class="num">{{.Movies}}</div><div class="label">Movies</div></div>
-    <div class="stat"><div class="num">{{.TVShows}}</div><div class="label">TV Shows</div></div>
-    <div class="stat"><div class="num">{{.Skipped}}</div><div class="label">Skipped</div></div>
-  </div>
-
-  <div class="rest-banner" id="restBanner">
-    💡 To enable interactive features, run: <code>movie rest</code> (default port <strong>{{.Port}}</strong>)
-  </div>
-
-  <div class="search"><input type="text" id="searchInput" placeholder="Search by title..." /></div>
-
-  <div class="filters">
-    <button class="active" onclick="filterType('all', this)">All</button>
-    <button onclick="filterType('movie', this)">Movies</button>
-    <button onclick="filterType('tv', this)">TV Shows</button>
-    <button onclick="filterType('watched', this)">✅ Watched</button>
-  </div>
-
-  <div class="grid" id="grid">
-    {{range .Items}}
-    <div class="card" data-type="{{.Type}}" data-title="{{.Title}}" data-id="{{.ID}}">
-      <div class="card-top">
-        {{if .ThumbnailPath}}
-        <img class="card-thumb" src="{{.ThumbnailPath}}" alt="{{.Title}}" loading="lazy" />
-        {{else}}
-        <div class="card-thumb-placeholder">🎬</div>
-        {{end}}
-        <div class="card-info">
-          <div class="card-title">{{.Title}}</div>
-          <div class="card-meta">
-            {{if .Year}}{{.Year}} · {{end}}{{.Type}}
-            {{if .Runtime}} · {{.Runtime}} min{{end}}
-            {{if .TmdbRating}} · <span class="card-rating">⭐ {{printf "%.1f" .TmdbRating}}</span>{{end}}
-          </div>
-          {{if .Genre}}
-          <div class="card-genre">
-            {{range .GenreList}}<span>{{.}}</span>{{end}}
-          </div>
-          {{end}}
-          {{if .Tagline}}<div class="card-desc" style="font-style:italic; margin-bottom:0.3rem;">{{.Tagline}}</div>{{end}}
-          {{if .Description}}<div class="card-desc">{{.Description}}</div>{{end}}
-        </div>
+<div class="app">
+  <!-- Sticky toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-inner">
+      <div class="toolbar-brand">🎬 <span>Movie CLI</span></div>
+      <div class="search-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="search-input" type="text" id="searchInput" placeholder="Search titles, directors, cast... (/ to focus)" />
       </div>
-      <div class="card-middle">
-        <div class="card-tags" id="tags-{{.ID}}"></div>
-        <div class="tag-input">
-          <input type="text" id="tag-input-{{.ID}}" placeholder="Add tag..." onkeydown="if(event.key==='Enter')addTag({{.ID}})" />
-          <button onclick="addTag({{.ID}})">+</button>
-        </div>
-      </div>
-      <div class="card-bottom">
-        <div>
-          {{if .Director}}<span class="director">🎬 {{.Director}}</span>{{end}}
-          {{if .CastList}}<span class="director"> · 🎭 {{.CastList}}</span>{{end}}
-        </div>
-        <div class="card-actions">
-          <button onclick="markWatched({{.ID}}, this)" class="watched-btn" title="Mark as watched">👁</button>
-          <button onclick="showSimilar({{.ID}}, '{{.Title}}')" class="similar-btn" title="Find similar">🔍</button>
-          <button onclick="deleteMedia({{.ID}}, this)" class="delete" title="Remove from library">🗑</button>
-        </div>
+      <div class="stats-strip">
+        <div class="stat-item"><span class="stat-num">{{.TotalFiles}}</span><span class="stat-label">total</span></div>
+        <div class="stat-item"><span class="stat-num">{{.Movies}}</span><span class="stat-label">movies</span></div>
+        <div class="stat-item"><span class="stat-num">{{.TVShows}}</span><span class="stat-label">tv</span></div>
       </div>
     </div>
-    {{end}}
+  </div>
+
+  <div class="main">
+    <div class="rest-banner" id="restBanner">
+      <span class="dot"></span>
+      Run <code>movie rest</code> to enable interactive features (port <strong>{{.Port}}</strong>)
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">Type</span>
+        <button class="filter-pill active" onclick="setFilter('type','all',this)">All</button>
+        <button class="filter-pill" onclick="setFilter('type','movie',this)">Movies</button>
+        <button class="filter-pill" onclick="setFilter('type','tv',this)">TV Shows</button>
+        <button class="filter-pill" onclick="setFilter('type','watched',this)">✅ Watched</button>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-group">
+        <span class="filter-label">Genre</span>
+        <select class="filter-select" id="genreFilter" onchange="applyFilters()">
+          <option value="">All Genres</option>
+        </select>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-group">
+        <span class="filter-label">Rating</span>
+        <select class="filter-select" id="ratingFilter" onchange="applyFilters()">
+          <option value="">Any Rating</option>
+          <option value="9">9+ ★★★★★</option>
+          <option value="8">8+ ★★★★</option>
+          <option value="7">7+ ★★★</option>
+          <option value="6">6+ ★★</option>
+          <option value="5">5+ ★</option>
+        </select>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-group">
+        <span class="filter-label">Sort</span>
+        <select class="filter-select" id="sortSelect" onchange="applySort()">
+          <option value="title-asc">Title A→Z</option>
+          <option value="title-desc">Title Z→A</option>
+          <option value="rating-desc">Rating ↓</option>
+          <option value="rating-asc">Rating ↑</option>
+          <option value="year-desc">Year ↓</option>
+          <option value="year-asc">Year ↑</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="results-info" id="resultsInfo"></div>
+
+    <div class="grid" id="grid">
+      {{range .Items}}
+      <div class="card" data-type="{{.Type}}" data-title="{{.Title}}" data-id="{{.ID}}"
+           data-rating="{{printf "%.1f" .TmdbRating}}" data-year="{{.Year}}"
+           data-genre="{{.Genre}}" data-director="{{.Director}}" data-cast="{{.CastList}}">
+        <div class="card-top">
+          {{if .ThumbnailPath}}
+          <img class="card-thumb" src="{{.ThumbnailPath}}" alt="{{.Title}}" loading="lazy" />
+          {{else}}
+          <div class="card-thumb-placeholder">🎬</div>
+          {{end}}
+          <div class="card-info">
+            <div class="card-title">{{.Title}}</div>
+            <div class="card-meta">
+              {{if .Year}}<span>{{.Year}}</span><span class="sep">·</span>{{end}}
+              <span>{{.Type}}</span>
+              {{if .Runtime}}<span class="sep">·</span><span>{{.Runtime}} min</span>{{end}}
+              {{if .TmdbRating}}<span class="sep">·</span><span class="card-rating">⭐ {{printf "%.1f" .TmdbRating}}</span>{{end}}
+            </div>
+            {{if .Genre}}
+            <div class="card-genre">
+              {{range .GenreList}}<span>{{.}}</span>{{end}}
+            </div>
+            {{end}}
+            {{if .Tagline}}<div class="card-tagline">"{{.Tagline}}"</div>{{end}}
+            {{if .Description}}<div class="card-desc">{{.Description}}</div>{{end}}
+          </div>
+        </div>
+        <div class="card-middle">
+          <div class="card-tags" id="tags-{{.ID}}"></div>
+          <div class="tag-add">
+            <input type="text" id="tag-input-{{.ID}}" placeholder="Add tag..." onkeydown="if(event.key==='Enter')addTag({{.ID}})" />
+            <button onclick="addTag({{.ID}})">+</button>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-credits">
+            {{if .Director}}🎬 {{.Director}}{{end}}
+            {{if .CastList}} · 🎭 {{.CastList}}{{end}}
+          </div>
+          <div class="card-actions">
+            <button onclick="markWatched({{.ID}}, this)" class="action-btn watched-btn" title="Mark as watched">👁</button>
+            <button onclick="showSimilar({{.ID}}, '{{.Title}}')" class="action-btn similar-btn" title="Find similar">🔍</button>
+            <button onclick="deleteMedia({{.ID}}, this)" class="action-btn delete" title="Remove">🗑</button>
+          </div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="icon">🔍</div>
+      <p>No items match your filters</p>
+    </div>
   </div>
 </div>
 
-<!-- Similar Movies Modal -->
+<!-- Similar Modal -->
 <div class="modal-overlay" id="similarModal" onclick="if(event.target===this)closeSimilar()">
   <div class="modal">
     <button class="modal-close" onclick="closeSimilar()">✕</button>
@@ -169,13 +281,38 @@
 const API_PORT = {{.Port}};
 const API_BASE = 'http://localhost:' + API_PORT;
 let restAvailable = false;
+let activeTypeFilter = 'all';
 
+// --- Init ---
+function init() {
+  buildGenreFilter();
+  updateResultsInfo();
+  checkRest();
+}
+
+function buildGenreFilter() {
+  const genres = new Set();
+  document.querySelectorAll('.card').forEach(c => {
+    const g = c.dataset.genre;
+    if (g) g.split(',').forEach(x => { const t = x.trim(); if (t) genres.add(t); });
+  });
+  const sel = document.getElementById('genreFilter');
+  Array.from(genres).sort().forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = g;
+    sel.appendChild(opt);
+  });
+}
+
+// --- Toast ---
 function showToast(msg, isError) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+  t.className = 'toast ' + (isError ? 'error' : 'success');
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2500);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() { t.style.display = 'none'; }, 2500);
 }
 
 function restRequired() {
@@ -186,53 +323,144 @@ function restRequired() {
   return false;
 }
 
+// --- REST check ---
 async function checkRest() {
   try {
-    const r = await fetch(API_BASE + '/api/stats', { signal: AbortSignal.timeout(1000) });
-    if (r.ok) {
-      restAvailable = true;
-      document.getElementById('restBanner').style.display = 'none';
-      loadAllTags();
-    }
-  } catch(e) { /* REST not running */ }
+    const r = await fetch(API_BASE + '/api/stats', { signal: AbortSignal.timeout(1500) });
+    if (!r.ok) return;
+    restAvailable = true;
+    const banner = document.getElementById('restBanner');
+    banner.classList.add('connected');
+    banner.querySelector('.dot').style.background = 'var(--success)';
+    banner.innerHTML = '<span class="dot" style="background:var(--success)"></span> Connected to REST server on port <strong>' + API_PORT + '</strong>';
+    loadAllTags();
+  } catch(e) {
+    // REST not running — banner stays visible
+  }
 }
+
+// --- Filters ---
+function setFilter(group, value, btn) {
+  if (group === 'type') {
+    btn.parentElement.querySelectorAll('.filter-pill').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    activeTypeFilter = value;
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  var query = document.getElementById('searchInput').value.toLowerCase();
+  var genre = document.getElementById('genreFilter').value;
+  var minRating = parseFloat(document.getElementById('ratingFilter').value) || 0;
+  var visible = 0;
+
+  document.querySelectorAll('.card').forEach(function(c) {
+    var show = true;
+
+    // Type filter
+    if (activeTypeFilter === 'watched') {
+      if (!c.classList.contains('watched')) show = false;
+    } else if (activeTypeFilter !== 'all') {
+      if (c.dataset.type !== activeTypeFilter) show = false;
+    }
+
+    // Genre filter
+    if (show && genre) {
+      var cardGenre = (c.dataset.genre || '').toLowerCase();
+      if (cardGenre.indexOf(genre.toLowerCase()) === -1) show = false;
+    }
+
+    // Rating filter
+    if (show && minRating > 0) {
+      var rating = parseFloat(c.dataset.rating) || 0;
+      if (rating < minRating) show = false;
+    }
+
+    // Search (title, director, cast)
+    if (show && query) {
+      var searchable = (c.dataset.title + ' ' + (c.dataset.director || '') + ' ' + (c.dataset.cast || '')).toLowerCase();
+      if (searchable.indexOf(query) === -1) show = false;
+    }
+
+    c.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+
+  updateResultsInfo(visible);
+}
+
+function updateResultsInfo(visible) {
+  var total = document.querySelectorAll('.card').length;
+  if (typeof visible === 'undefined') visible = total;
+  var info = document.getElementById('resultsInfo');
+  info.textContent = visible === total ? total + ' items' : 'Showing ' + visible + ' of ' + total + ' items';
+  document.getElementById('emptyState').style.display = visible === 0 ? '' : 'none';
+}
+
+function applySort() {
+  var val = document.getElementById('sortSelect').value;
+  var grid = document.getElementById('grid');
+  var cards = Array.from(grid.querySelectorAll('.card'));
+
+  cards.sort(function(a, b) {
+    switch (val) {
+      case 'title-asc': return a.dataset.title.localeCompare(b.dataset.title);
+      case 'title-desc': return b.dataset.title.localeCompare(a.dataset.title);
+      case 'rating-desc': return (parseFloat(b.dataset.rating) || 0) - (parseFloat(a.dataset.rating) || 0);
+      case 'rating-asc': return (parseFloat(a.dataset.rating) || 0) - (parseFloat(b.dataset.rating) || 0);
+      case 'year-desc': return (parseInt(b.dataset.year) || 0) - (parseInt(a.dataset.year) || 0);
+      case 'year-asc': return (parseInt(a.dataset.year) || 0) - (parseInt(b.dataset.year) || 0);
+      default: return 0;
+    }
+  });
+
+  cards.forEach(function(c) { grid.appendChild(c); });
+}
+
+// --- Search ---
+document.getElementById('searchInput').addEventListener('input', function() { applyFilters(); });
 
 // --- Tags ---
 async function loadAllTags() {
-  document.querySelectorAll('.card').forEach(async card => {
-    const id = card.dataset.id;
+  var cards = document.querySelectorAll('.card');
+  for (var i = 0; i < cards.length; i++) {
+    var id = cards[i].dataset.id;
     try {
-      const r = await fetch(API_BASE + '/api/tags?media_id=' + id);
-      if (r.ok) {
-        const data = await r.json();
-        renderTags(id, data.tags || []);
+      var r = await fetch(API_BASE + '/api/tags?media_id=' + id);
+      if (!r.ok) {
+        console.error('Failed to load tags for media ' + id + ': ' + r.status);
+        continue;
       }
-    } catch(e) {}
-  });
+      var data = await r.json();
+      renderTags(id, data.tags || []);
+    } catch(e) {
+      console.error('Error loading tags for media ' + id + ':', e.message);
+    }
+  }
 }
 
 function renderTags(mediaId, tags) {
-  const container = document.getElementById('tags-' + mediaId);
+  var container = document.getElementById('tags-' + mediaId);
   if (!container) return;
-  container.innerHTML = tags.map(t =>
-    `<span class="tag" onclick="removeTag(${mediaId}, '${t}')">${t}<span class="tag-x">✕</span></span>`
-  ).join('');
-  // Mark card as watched if it has the watched tag
-  const card = container.closest('.card');
+  container.innerHTML = tags.map(function(t) {
+    return '<span class="tag" onclick="removeTag(' + mediaId + ', \'' + t + '\')">' + t + '<span class="tag-x">✕</span></span>';
+  }).join('');
+  var card = container.closest('.card');
   if (tags.includes('watched')) {
     card.classList.add('watched');
-    const btn = card.querySelector('.watched-btn');
+    var btn = card.querySelector('.watched-btn');
     if (btn) btn.classList.add('is-watched');
   }
 }
 
 async function addTag(mediaId) {
   if (restRequired()) return;
-  const input = document.getElementById('tag-input-' + mediaId);
-  const tag = input.value.trim().toLowerCase();
+  var input = document.getElementById('tag-input-' + mediaId);
+  var tag = input.value.trim().toLowerCase();
   if (!tag) return;
   try {
-    const r = await fetch(API_BASE + '/api/tags', {
+    var r = await fetch(API_BASE + '/api/tags', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ media_id: mediaId, tag: tag })
@@ -240,82 +468,100 @@ async function addTag(mediaId) {
     if (r.ok) {
       input.value = '';
       showToast('Tag "' + tag + '" added');
-      // Refresh tags
-      const tr = await fetch(API_BASE + '/api/tags?media_id=' + mediaId);
-      if (tr.ok) { const d = await tr.json(); renderTags(mediaId, d.tags || []); }
+      var tr = await fetch(API_BASE + '/api/tags?media_id=' + mediaId);
+      if (!tr.ok) { showToast('Failed to refresh tags', true); return; }
+      var d = await tr.json();
+      renderTags(mediaId, d.tags || []);
     } else {
-      showToast('Tag already exists or error', true);
+      var errText = await r.text();
+      showToast('Could not add tag: ' + errText, true);
     }
-  } catch(e) { showToast('Failed to add tag', true); }
+  } catch(e) {
+    showToast('Network error adding tag: ' + e.message, true);
+  }
 }
 
 async function removeTag(mediaId, tag) {
   if (restRequired()) return;
   try {
-    const r = await fetch(API_BASE + '/api/tags', {
+    var r = await fetch(API_BASE + '/api/tags', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ media_id: mediaId, tag: tag })
     });
-    if (r.ok) {
-      showToast('Tag "' + tag + '" removed');
-      const tr = await fetch(API_BASE + '/api/tags?media_id=' + mediaId);
-      if (tr.ok) { const d = await tr.json(); renderTags(mediaId, d.tags || []); }
+    if (!r.ok) {
+      var errText = await r.text();
+      showToast('Could not remove tag: ' + errText, true);
+      return;
     }
-  } catch(e) { showToast('Failed to remove tag', true); }
+    showToast('Tag "' + tag + '" removed');
+    var tr = await fetch(API_BASE + '/api/tags?media_id=' + mediaId);
+    if (!tr.ok) { showToast('Failed to refresh tags', true); return; }
+    var d = await tr.json();
+    renderTags(mediaId, d.tags || []);
+  } catch(e) {
+    showToast('Network error removing tag: ' + e.message, true);
+  }
 }
 
 // --- Mark Watched ---
 async function markWatched(id, btn) {
   if (restRequired()) return;
   try {
-    const r = await fetch(API_BASE + '/api/media/' + id + '/watched', { method: 'PATCH' });
-    if (r.ok) {
-      btn.classList.add('is-watched');
-      btn.closest('.card').classList.add('watched');
-      showToast('Marked as watched');
-      // Refresh tags to show the "watched" tag
-      const tr = await fetch(API_BASE + '/api/tags?media_id=' + id);
-      if (tr.ok) { const d = await tr.json(); renderTags(id, d.tags || []); }
-    } else {
-      showToast('Error: ' + (await r.text()), true);
+    var r = await fetch(API_BASE + '/api/media/' + id + '/watched', { method: 'PATCH' });
+    if (!r.ok) {
+      var errText = await r.text();
+      showToast('Could not mark watched: ' + errText, true);
+      return;
     }
-  } catch(e) { showToast('Failed to mark watched', true); }
+    btn.classList.add('is-watched');
+    btn.closest('.card').classList.add('watched');
+    showToast('Marked as watched');
+    var tr = await fetch(API_BASE + '/api/tags?media_id=' + id);
+    if (tr.ok) {
+      var d = await tr.json();
+      renderTags(id, d.tags || []);
+    }
+  } catch(e) {
+    showToast('Network error: ' + e.message, true);
+  }
 }
 
 // --- Similar ---
 async function showSimilar(id, title) {
   if (restRequired()) return;
-  const modal = document.getElementById('similarModal');
-  const content = document.getElementById('similarContent');
+  var modal = document.getElementById('similarModal');
+  var content = document.getElementById('similarContent');
   document.getElementById('similarTitle').textContent = 'Similar to "' + title + '"';
-  content.innerHTML = '<div class="similar-loading">Loading recommendations...</div>';
+  content.innerHTML = '<div class="similar-loading">Loading recommendations…</div>';
   modal.classList.add('show');
 
   try {
-    const r = await fetch(API_BASE + '/api/media/' + id + '/similar');
-    if (!r.ok) { content.innerHTML = '<div class="similar-empty">Could not fetch recommendations</div>'; return; }
-    const data = await r.json();
-    const items = data.similar || [];
-    if (items.length === 0) {
-      content.innerHTML = '<div class="similar-empty">No recommendations found</div>';
+    var r = await fetch(API_BASE + '/api/media/' + id + '/similar');
+    if (!r.ok) {
+      content.innerHTML = '<div class="similar-empty">Could not fetch recommendations (HTTP ' + r.status + ')</div>';
       return;
     }
-    content.innerHTML = items.slice(0, 10).map(s => {
-      const poster = s.poster_path ? 'https://image.tmdb.org/t/p/w92' + s.poster_path : '';
-      const year = (s.release_date || s.first_air_date || '').substring(0, 4);
-      const rating = s.vote_average ? '⭐ ' + s.vote_average.toFixed(1) : '';
-      return `<div class="similar-item">
-        ${poster ? `<img src="${poster}" alt="${s.title || s.name}" />` : ''}
-        <div class="similar-item-info">
-          <div class="similar-item-title">${s.title || s.name || 'Unknown'}</div>
-          <div class="similar-item-meta">${year} ${rating}</div>
-          ${s.overview ? `<div class="similar-item-desc">${s.overview}</div>` : ''}
-        </div>
-      </div>`;
+    var data = await r.json();
+    var items = data.similar || [];
+    if (items.length === 0) {
+      content.innerHTML = '<div class="similar-empty">No recommendations found' + (data.message ? ': ' + data.message : '') + '</div>';
+      return;
+    }
+    content.innerHTML = items.slice(0, 10).map(function(s) {
+      var poster = s.poster_path ? 'https://image.tmdb.org/t/p/w92' + s.poster_path : '';
+      var year = (s.release_date || s.first_air_date || '').substring(0, 4);
+      var rating = s.vote_average ? '⭐ ' + s.vote_average.toFixed(1) : '';
+      return '<div class="similar-item">' +
+        (poster ? '<img src="' + poster + '" alt="' + (s.title || s.name) + '" />' : '') +
+        '<div class="similar-item-info">' +
+          '<div class="similar-item-title">' + (s.title || s.name || 'Unknown') + '</div>' +
+          '<div class="similar-item-meta">' + year + ' ' + rating + '</div>' +
+          (s.overview ? '<div class="similar-item-desc">' + s.overview + '</div>' : '') +
+        '</div></div>';
     }).join('');
   } catch(e) {
-    content.innerHTML = '<div class="similar-empty">REST server error</div>';
+    content.innerHTML = '<div class="similar-empty">Network error: ' + e.message + '</div>';
   }
 }
 
@@ -328,37 +574,30 @@ async function deleteMedia(id, btn) {
   if (restRequired()) return;
   if (!confirm('Remove this item from the library?')) return;
   try {
-    const r = await fetch(API_BASE + '/api/media/' + id, { method: 'DELETE' });
-    if (r.ok) {
-      btn.closest('.card').classList.add('removed');
-      showToast('Removed from library');
-    } else {
-      showToast('Error: ' + (await r.text()), true);
+    var r = await fetch(API_BASE + '/api/media/' + id, { method: 'DELETE' });
+    if (!r.ok) {
+      var errText = await r.text();
+      showToast('Delete failed: ' + errText, true);
+      return;
     }
-  } catch(e) { showToast('Failed to delete', true); }
+    btn.closest('.card').classList.add('removed');
+    showToast('Removed from library');
+    updateResultsInfo();
+  } catch(e) {
+    showToast('Network error: ' + e.message, true);
+  }
 }
 
-// --- Filters ---
-function filterType(type, btn) {
-  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.card').forEach(c => {
-    if (type === 'all') { c.style.display = ''; }
-    else if (type === 'watched') { c.style.display = c.classList.contains('watched') ? '' : 'none'; }
-    else { c.style.display = c.dataset.type === type ? '' : 'none'; }
-  });
-}
-
-document.getElementById('searchInput').addEventListener('input', function() {
-  const q = this.value.toLowerCase();
-  document.querySelectorAll('.card').forEach(c => {
-    c.style.display = c.dataset.title.toLowerCase().includes(q) ? '' : 'none';
-  });
+// --- Keyboard shortcuts ---
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeSimilar();
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
 });
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSimilar(); });
-
-checkRest();
+init();
 </script>
 </body>
 </html>
