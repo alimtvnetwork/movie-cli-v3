@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.17.0
+
+### Added
+- **`movie ls --format table`** — output library listing as a formatted table with columns: #, Title, Year, Type, Rating, Genre, Director (no interactive pager)
+
+### Changed
+- **Refactored `movie_ls.go`** — split 313-line file into `movie_ls.go` (196), `movie_ls_table.go` (99), and `movie_ls_detail.go` (120)
+
+## v1.16.0
+
+### Changed
+- **Refactored `movie_search.go`** — extracted save-and-print logic into `cmd/movie_search_save.go` (135 lines); `movie_search.go` reduced from 240 to 135 lines
+
 ## v1.15.0
 
 ### Added
