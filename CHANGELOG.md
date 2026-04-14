@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.27.0
+
+### Changed
+- **Modernized HTML report** — complete UI overhaul: sticky toolbar with inline search, genre/rating/sort dropdowns, type filter pills, dark zinc theme, result count, empty state, keyboard shortcut (`/` to search, `Esc` to close modal), responsive layout
+- **Search now searches titles, directors, and cast** — not just titles
+- **Genre filter dropdown** — auto-populated from scan data
+- **Rating filter dropdown** — filter by minimum rating (5+ through 9+)
+- **Sort options** — sort by title, rating, or year (ascending/descending)
+- **Connected REST indicator** — banner shows green dot when REST server is detected
+
+### Fixed
+- **`writeJSON` error swallowed** — `json.Encoder.Encode` error now logged to stderr
+- **`tmpl.Execute` error swallowed** — template render error now logged to stderr
+- **`GetConfig` errors swallowed** — `tmdb_api_key` and `tmdb_token` config read errors now logged
+- **`database.Exec` watchlist update error swallowed** — now logged to stderr
+- **`database.AddTag` watched tag error swallowed** — now logged to stderr
+- **JS error handling** — all `catch(e)` blocks now show specific error messages; `fetch` non-ok responses show HTTP status/body
+
 ## v1.26.0
 
 ### Added
