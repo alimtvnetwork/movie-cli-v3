@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"embed"
 	"fmt"
 	"html/template"
 	"os"
@@ -11,10 +10,8 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/templates"
 )
-
-//go:embed ../templates/report.html
-var reportTemplateFS embed.FS
 
 const defaultRESTPort = 8086
 
@@ -50,7 +47,7 @@ type htmlReportItem struct {
 
 // writeHTMLReport generates report.html in the output directory.
 func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
-	tmplBytes, err := reportTemplateFS.ReadFile("templates/report.html")
+	tmplBytes, err := templates.FS.ReadFile("report.html")
 	if err != nil {
 		return fmt.Errorf("read template: %w", err)
 	}
