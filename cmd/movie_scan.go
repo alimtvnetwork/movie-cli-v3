@@ -119,7 +119,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanHeader(scanDir, outputDir)
 	}
 
-	var totalFiles, movieCount, tvCount, skipped int
+	var totalFiles, movieCount, tvCount, skipped, removed int
 	var scannedItems []db.Media
 	var jsonItems []scanJSONItem
 
@@ -135,15 +135,76 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		runDryRunScan(videoFiles, useJSON, useTable,
 			&jsonItems, &totalFiles, &movieCount, &tvCount)
 	} else {
+		// ── Re-scan: detect removed files and clean up ──
+		existingMedia, _ := database.GetMediaByScanDir(scanDir)
+		diskPaths := make(map[string]bool, len(videoFiles))
+		for _, vf := range videoFiles {
+			diskPaths[vf.FullPath] = true
+		}
+		var removeIDs []int64
+		for i := range existingMedia {
+			if !diskPaths[existingMedia[i].OriginalFilePath] {
+				removeIDs = append(removeIDs, existingMedia[i].ID)
+			}
+		}
+		if len(removeIDs) > 0 {
+			delCount, delErr := database.DeleteMediaByIDs(removeIDs)
+			if delErr != nil {
+				errlog.Warn("Could not remove %d stale entries: %v", len(removeIDs), delErr)
+			} else {
+				removed = delCount
+				if !useJSON && !useTable {
+					fmt.Printf("  🗑️  Removed %d entries (files no longer on disk)\n\n", removed)
+				}
+			}
+		}
+
+		// ── Build set of existing DB paths for skip detection ──
+		existingPaths := make(map[string]*db.Media, len(existingMedia))
+		for i := range existingMedia {
+			existingPaths[existingMedia[i].OriginalFilePath] = &existingMedia[i]
+		}
+
+		// ── Process files: skip existing, enrich new ──
 		client := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
 		for _, vf := range videoFiles {
+			if em, found := existingPaths[vf.FullPath]; found {
+				// Already in DB — include in report but don't re-process
+				*&totalFiles++
+				*&skipped++
+				scannedItems = append(scannedItems, *em)
+				if em.Type == "movie" {
+					movieCount++
+				} else {
+					tvCount++
+				}
+				if useTable {
+					printScanTableRow(buildMediaTableRow(totalFiles, em, "existing"))
+				} else if !useJSON {
+					typeIcon := "🎬"
+					if em.Type == "tv" {
+						typeIcon = "📺"
+					}
+					fmt.Printf("\n  %d. %s %s", totalFiles, typeIcon, em.CleanTitle)
+					if em.Year > 0 {
+						fmt.Printf(" (%d)", em.Year)
+					}
+					fmt.Printf(" [%s]\n", em.Type)
+					fmt.Println("     ⏩ Already in database")
+				}
+				continue
+			}
 			processVideoFile(vf, database, client, useTMDb, outputDir,
 				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
 				useTable || useJSON)
 		}
 		if useJSON {
 			for i := range scannedItems {
-				jsonItems = append(jsonItems, buildMediaJSONItem(&scannedItems[i], "new"))
+				status := "existing"
+				if existingPaths[scannedItems[i].OriginalFilePath] == nil {
+					status = "new"
+				}
+				jsonItems = append(jsonItems, buildMediaJSONItem(&scannedItems[i], status))
 			}
 		}
 	}
@@ -161,7 +222,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	if useJSON {
 		printScanJSON(scanDir, jsonItems, totalFiles, movieCount, tvCount, skipped)
 	} else {
-		printScanFooter(scanDir, outputDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
+		printScanFooter(scanDir, outputDir, scannedItems, totalFiles, movieCount, tvCount, skipped, removed)
 	}
 
 	// Start REST server if --rest was specified
