@@ -146,6 +146,26 @@ func runMovieLsInteractive(database *db.DB) {
 		fmt.Printf("🎬 Your Library — Page %d/%d (%d total)\n", page, totalPages, total)
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
+		// Show scanned folders reminder on first page
+		if page == 1 {
+			scanFolders, _ := database.ListDistinctScanFolders()
+			if len(scanFolders) > 0 {
+				fmt.Print("  📂 Scanned: ")
+				for i, f := range scanFolders {
+					if i > 0 {
+						fmt.Print(", ")
+					}
+					fmt.Print(f)
+					if i >= 2 && len(scanFolders) > 3 {
+						fmt.Printf(" (+%d more)", len(scanFolders)-3)
+						break
+					}
+				}
+				fmt.Println()
+				fmt.Println()
+			}
+		}
+
 		for i := range media {
 			num := offset + i + 1
 			yearStr := ""

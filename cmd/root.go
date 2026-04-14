@@ -77,6 +77,7 @@ func init() {
 		movieDBCmd,
 		movieRestCmd,
 		movieLogsCmd,
+		movieCdCmd,
 	)
 }
 
