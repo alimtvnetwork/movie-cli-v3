@@ -84,36 +84,45 @@ func printScanHeader(scanDir, outputDir string) {
 	fmt.Println("  ──────────────────────────────────────────")
 }
 
-// printScanFooter prints the summary after scanning completes.
+// printScanFooter prints the summary after scanning completes (gitmap-style).
 func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 	totalFiles, movieCount, tvCount, skipped int) {
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("  ■ Summary")
+	fmt.Println("  ──────────────────────────────────────────")
 	if scanDryRun {
-		fmt.Printf("📊 Dry Run Complete!\n")
+		fmt.Println("  📊 Dry Run Complete!")
 	} else {
-		fmt.Printf("📊 Scan Complete!\n")
+		fmt.Println("  📊 Scan Complete!")
 	}
-	fmt.Printf("   Total files: %d\n", totalFiles)
-	fmt.Printf("   Movies:      %d\n", movieCount)
-	fmt.Printf("   TV Shows:    %d\n", tvCount)
+	fmt.Printf("     Total files: %d\n", totalFiles)
+	fmt.Printf("     Movies:      %d\n", movieCount)
+	fmt.Printf("     TV Shows:    %d\n", tvCount)
 	if skipped > 0 {
-		fmt.Printf("   Skipped:     %d (already in DB)\n", skipped)
+		fmt.Printf("     Skipped:     %d (already in DB)\n", skipped)
 	}
 	if scanDryRun {
-		fmt.Println("\n💡 Run without --dry-run to actually scan and save.")
+		fmt.Println("\n  💡 Run without --dry-run to actually scan and save.")
 	} else {
-		fmt.Printf("   Output:      %s\n", outputDir)
+		fmt.Println()
+		fmt.Println("  ■ Output Files")
+		fmt.Println("  ──────────────────────────────────────────")
+		fmt.Printf("  📁 %s/\n", outputDir)
 		if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems,
 			totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
 			errlog.Warn("Could not write summary.json: %v", summaryErr)
 		} else {
-			fmt.Printf("\n📋 Summary saved: %s\n", filepath.Join(outputDir, "summary.json"))
+			fmt.Printf("  ├── 📄 summary.json      Scan report with metadata\n")
 		}
 		if htmlErr := writeHTMLReport(outputDir, scanDir, scannedItems,
 			totalFiles, movieCount, tvCount, skipped); htmlErr != nil {
 			errlog.Warn("Could not write report.html: %v", htmlErr)
 		} else {
-			fmt.Printf("🌐 Report saved: %s\n", filepath.Join(outputDir, "report.html"))
+			fmt.Printf("  ├── 🌐 report.html       Interactive HTML report\n")
 		}
+		fmt.Printf("  ├── 📁 json/movie/       Per-movie JSON metadata\n")
+		fmt.Printf("  ├── 📁 json/tv/          Per-show JSON metadata\n")
+		fmt.Printf("  └── 📁 thumbnails/       Movie poster thumbnails\n")
 	}
+	fmt.Println()
 }
