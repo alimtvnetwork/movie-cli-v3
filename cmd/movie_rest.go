@@ -29,11 +29,17 @@ communicate with this server for interactive features.
 Default port: 8086. Override with --port.
 
 Endpoints:
-  GET    /api/media        List all media
-  GET    /api/media/{id}   Get a single media item
-  DELETE /api/media/{id}   Remove a media item
-  PATCH  /api/media/{id}   Update media fields (JSON body)
-  GET    /api/stats        Library statistics
+  GET    /api/media              List all media
+  GET    /api/media/{id}         Get a single media item
+  DELETE /api/media/{id}         Remove a media item
+  PATCH  /api/media/{id}         Update media fields (JSON body)
+  GET    /api/media/{id}/similar TMDb recommendations
+  PATCH  /api/media/{id}/watched Mark as watched
+  GET    /api/tags               All tags with counts
+  GET    /api/tags?media_id=N    Tags for a specific item
+  POST   /api/tags               Add a tag (JSON: media_id, tag)
+  DELETE /api/tags               Remove a tag (JSON: media_id, tag)
+  GET    /api/stats              Library statistics
 
 Examples:
   movie rest              Start on port 8086
@@ -58,10 +64,30 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	mux := http.NewServeMux()
+
+	// Routes with sub-paths must be registered before the parent catch-all.
+	// Go's ServeMux matches longest prefix first, so /api/media/ catches
+	// both /api/media/{id} and /api/media/{id}/similar|watched.
+	mux.HandleFunc("/api/tags", corsWrap(func(w http.ResponseWriter, r *http.Request) {
+		handleTags(w, r, database)
+	}))
 	mux.HandleFunc("/api/media", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleListMedia(w, r, database)
 	}))
 	mux.HandleFunc("/api/media/", corsWrap(func(w http.ResponseWriter, r *http.Request) {
+		// Sub-route dispatch: /api/media/{id}/similar, /api/media/{id}/watched
+		path := strings.TrimPrefix(r.URL.Path, "/api/media/")
+		parts := strings.SplitN(path, "/", 2)
+		if len(parts) == 2 {
+			switch parts[1] {
+			case "similar":
+				handleSimilar(w, r, database)
+				return
+			case "watched":
+				handleWatched(w, r, database)
+				return
+			}
+		}
 		handleMediaByID(w, r, database)
 	}))
 	mux.HandleFunc("/api/stats", corsWrap(func(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +103,12 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("     GET    /api/media/{id}\n")
 	fmt.Printf("     DELETE /api/media/{id}\n")
 	fmt.Printf("     PATCH  /api/media/{id}\n")
+	fmt.Printf("     GET    /api/media/{id}/similar\n")
+	fmt.Printf("     PATCH  /api/media/{id}/watched\n")
+	fmt.Printf("     GET    /api/tags\n")
+	fmt.Printf("     GET    /api/tags?media_id={id}\n")
+	fmt.Printf("     POST   /api/tags\n")
+	fmt.Printf("     DELETE /api/tags\n")
 	fmt.Printf("     GET    /api/stats\n\n")
 
 	if restOpen {

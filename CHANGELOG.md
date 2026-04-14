@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.24.0
+
+### Added
+- **`GET/POST/DELETE /api/tags`** — full tag management via REST: list all tags with counts, list tags per media, add tag, remove tag
+- **`GET /api/media/{id}/similar`** — fetches TMDb recommendations for a media item
+- **`PATCH /api/media/{id}/watched`** — marks a media item as watched (updates watchlist + adds "watched" tag)
+- **Refactored REST handlers** — new endpoints in `cmd/movie_rest_handlers.go` to keep files under 200 lines
+
 ## v1.23.0
 
 ### Added
