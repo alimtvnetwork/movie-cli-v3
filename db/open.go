@@ -72,6 +72,10 @@ func Open() (*DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("migration failed: %w", err)
 	}
+	if err := d.migrateErrorLogs(); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("error_logs migration failed: %w", err)
+	}
 
 	return d, nil
 }
