@@ -55,11 +55,28 @@ func TestInsertAndGetMedia(t *testing.T) {
 func TestInsertMediaAllowsMissingTMDbID(t *testing.T) {
 	d := openTestDB(t)
 
-	if _, err := d.InsertMedia(&Media{Title: "Local One", CleanTitle: "local one", Type: "movie"}); err != nil {
+	id1, err := d.InsertMedia(&Media{Title: "Local One", CleanTitle: "local one", Type: "movie"})
+	if err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
 	if _, err := d.InsertMedia(&Media{Title: "Local Two", CleanTitle: "local two", Type: "movie"}); err != nil {
 		t.Fatalf("second insert with empty tmdb_id should store NULL: %v", err)
+	}
+
+	m, err := d.GetMediaByID(id1)
+	if err != nil {
+		t.Fatalf("get by id with null tmdb_id: %v", err)
+	}
+	if m.TmdbID != 0 {
+		t.Errorf("tmdb_id = %d, want 0 for NULL", m.TmdbID)
+	}
+
+	results, err := d.SearchMedia("local")
+	if err != nil {
+		t.Fatalf("search with null tmdb_id rows: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("search returned %d results, want 2", len(results))
 	}
 }
 

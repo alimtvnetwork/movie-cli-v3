@@ -6,11 +6,15 @@ import (
 )
 
 // mediaColumns is the standard SELECT column list for media queries.
-const mediaColumns = `id, title, clean_title, year, type, tmdb_id, imdb_id,
-	description, imdb_rating, tmdb_rating, popularity, genre,
-	director, cast_list, thumbnail_path, original_file_name,
-	original_file_path, current_file_path, file_extension, file_size,
-	runtime, language, budget, revenue, trailer_url, tagline`
+const mediaColumns = `id, title, clean_title, year, type,
+	COALESCE(tmdb_id, 0), COALESCE(imdb_id, ''), COALESCE(description, ''),
+	COALESCE(imdb_rating, 0), COALESCE(tmdb_rating, 0), COALESCE(popularity, 0),
+	COALESCE(genre, ''), COALESCE(director, ''), COALESCE(cast_list, ''),
+	COALESCE(thumbnail_path, ''), COALESCE(original_file_name, ''),
+	COALESCE(original_file_path, ''), COALESCE(current_file_path, ''),
+	COALESCE(file_extension, ''), COALESCE(file_size, 0),
+	COALESCE(runtime, 0), COALESCE(language, ''), COALESCE(budget, 0),
+	COALESCE(revenue, 0), COALESCE(trailer_url, ''), COALESCE(tagline, '')`
 
 // Media represents a row in the media table.
 type Media struct {
