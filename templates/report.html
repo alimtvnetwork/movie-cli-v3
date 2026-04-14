@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie CLI — Library Report</title>
+<style>
+  :root { --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --border: #334155; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+  header { text-align: center; margin-bottom: 2rem; }
+  header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+  header p { color: var(--muted); }
+  .stats { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; min-width: 120px; }
+  .stat .num { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
+  .filters { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .filters button { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+  .filters button.active { background: var(--accent); border-color: var(--accent); }
+  .search { text-align: center; margin-bottom: 1.5rem; }
+  .search input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1rem; border-radius: 6px; width: 100%; max-width: 400px; font-size: 0.95rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
+  .card:hover { transform: translateY(-2px); }
+  .card-top { display: flex; gap: 1rem; padding: 1rem; }
+  .card-thumb { width: 100px; min-height: 150px; border-radius: 6px; object-fit: cover; background: var(--border); flex-shrink: 0; }
+  .card-thumb-placeholder { width: 100px; min-height: 150px; border-radius: 6px; background: var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 2rem; flex-shrink: 0; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .card-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .card-rating { color: #fbbf24; font-weight: 600; }
+  .card-genre { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
+  .card-genre span { background: var(--bg); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; color: var(--muted); }
+  .card-desc { font-size: 0.8rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-bottom { padding: 0.75rem 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .card-bottom .director { font-size: 0.75rem; color: var(--muted); }
+  .card-actions { display: flex; gap: 0.5rem; }
+  .card-actions button { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+  .card-actions button:hover { border-color: var(--accent); color: var(--accent); }
+  .card-actions button.delete:hover { border-color: var(--danger); color: var(--danger); }
+  .card.removed { opacity: 0.3; pointer-events: none; }
+  .rest-banner { background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1.5rem; font-size: 0.85rem; }
+  .rest-banner code { background: var(--bg); padding: 0.2rem 0.5rem; border-radius: 4px; }
+  .toast { position: fixed; bottom: 1rem; right: 1rem; background: var(--success); color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.85rem; display: none; z-index: 100; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } .card-top { flex-direction: column; align-items: center; text-align: center; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎬 Movie CLI Library</h1>
+    <p>Scanned: {{.ScannedFolder}} — {{.ScannedAt}}</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num">{{.TotalFiles}}</div><div class="label">Total</div></div>
+    <div class="stat"><div class="num">{{.Movies}}</div><div class="label">Movies</div></div>
+    <div class="stat"><div class="num">{{.TVShows}}</div><div class="label">TV Shows</div></div>
+    <div class="stat"><div class="num">{{.Skipped}}</div><div class="label">Skipped</div></div>
+  </div>
+
+  <div class="rest-banner" id="restBanner">
+    💡 To enable interactive features (delete, mark), run: <code>movie rest</code> (default port <strong>{{.Port}}</strong>)
+  </div>
+
+  <div class="search"><input type="text" id="searchInput" placeholder="Search by title..." /></div>
+
+  <div class="filters">
+    <button class="active" onclick="filterType('all', this)">All</button>
+    <button onclick="filterType('movie', this)">Movies</button>
+    <button onclick="filterType('tv', this)">TV Shows</button>
+  </div>
+
+  <div class="grid" id="grid">
+    {{range .Items}}
+    <div class="card" data-type="{{.Type}}" data-title="{{.Title}}" data-id="{{.ID}}">
+      <div class="card-top">
+        {{if .ThumbnailPath}}
+        <img class="card-thumb" src="{{.ThumbnailPath}}" alt="{{.Title}}" loading="lazy" />
+        {{else}}
+        <div class="card-thumb-placeholder">🎬</div>
+        {{end}}
+        <div class="card-info">
+          <div class="card-title">{{.Title}}</div>
+          <div class="card-meta">
+            {{if .Year}}{{.Year}} · {{end}}{{.Type}}
+            {{if .Runtime}} · {{.Runtime}} min{{end}}
+            {{if .TmdbRating}} · <span class="card-rating">⭐ {{printf "%.1f" .TmdbRating}}</span>{{end}}
+          </div>
+          {{if .Genre}}
+          <div class="card-genre">
+            {{range .GenreList}}<span>{{.}}</span>{{end}}
+          </div>
+          {{end}}
+          {{if .Tagline}}<div class="card-desc" style="font-style:italic; margin-bottom:0.3rem;">{{.Tagline}}</div>{{end}}
+          {{if .Description}}<div class="card-desc">{{.Description}}</div>{{end}}
+        </div>
+      </div>
+      <div class="card-bottom">
+        <div>
+          {{if .Director}}<span class="director">🎬 {{.Director}}</span>{{end}}
+          {{if .CastList}}<span class="director"> · 🎭 {{.CastList}}</span>{{end}}
+        </div>
+        <div class="card-actions">
+          <button onclick="deleteMedia({{.ID}}, this)" class="delete" title="Remove from library">🗑</button>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_PORT = {{.Port}};
+const API_BASE = 'http://localhost:' + API_PORT;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+async function checkRest() {
+  try {
+    const r = await fetch(API_BASE + '/api/stats', { signal: AbortSignal.timeout(1000) });
+    if (r.ok) {
+      document.getElementById('restBanner').style.display = 'none';
+    }
+  } catch(e) { /* REST not running */ }
+}
+
+async function deleteMedia(id, btn) {
+  if (!confirm('Remove this item from the library?')) return;
+  try {
+    const r = await fetch(API_BASE + '/api/media/' + id, { method: 'DELETE' });
+    if (r.ok) {
+      btn.closest('.card').classList.add('removed');
+      showToast('Removed from library');
+    } else {
+      showToast('Error: ' + (await r.text()));
+    }
+  } catch(e) {
+    showToast('REST server not running. Start with: movie rest');
+  }
+}
+
+function filterType(type, btn) {
+  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.card').forEach(c => {
+    c.style.display = (type === 'all' || c.dataset.type === type) ? '' : 'none';
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.card').forEach(c => {
+    c.style.display = c.dataset.title.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+checkRest();
+</script>
+</body>
+</html>
