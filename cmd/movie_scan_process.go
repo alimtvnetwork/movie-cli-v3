@@ -188,5 +188,5 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		}
 	}
 
-	fmt.Printf("     ✅ TMDb: %s (⭐ %.1f)\n", m.Title, m.TmdbRating)
+	fmt.Printf("     ⭐ %.1f  %s\n", m.TmdbRating, m.Title)
 }
