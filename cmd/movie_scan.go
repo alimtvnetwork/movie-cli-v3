@@ -188,13 +188,16 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		for _, vf := range videoFiles {
 			*totalFiles++
 			result := cleaner.Clean(vf.Name)
-			fmt.Printf("  📄 %s\n", vf.Name)
-			fmt.Printf("     → %s", result.CleanTitle)
+			typeIcon := "🎬"
+			if result.Type == "tv" {
+				typeIcon = "📺"
+			}
+			fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 			if result.Year > 0 {
 				fmt.Printf(" (%d)", result.Year)
 			}
 			fmt.Printf(" [%s]\n", result.Type)
-			fmt.Printf("     📂 %s\n\n", vf.FullPath)
+			fmt.Printf("     └─ %s\n", vf.Name)
 			if result.Type == "movie" {
 				*movieCount++
 			} else {
