@@ -230,3 +230,69 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }
+
+// serveHTMLReport renders the HTML report template with live data from the database.
+func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
+	tmplBytes, err := templates.FS.ReadFile("report.html")
+	if err != nil {
+		http.Error(w, "template not found", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl, parseErr := template.New("report").Parse(string(tmplBytes))
+	if parseErr != nil {
+		http.Error(w, "template parse error", http.StatusInternalServerError)
+		return
+	}
+
+	items, listErr := database.ListMedia(0, 10000)
+	if listErr != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	movies, tv := 0, 0
+	reportItems := make([]htmlReportItem, 0, len(items))
+	for _, m := range items {
+		if m.Type == "movie" {
+			movies++
+		} else {
+			tv++
+		}
+		var genres []string
+		if m.Genre != "" {
+			for _, g := range splitGenres(m.Genre) {
+				genres = append(genres, g)
+			}
+		}
+		reportItems = append(reportItems, htmlReportItem{
+			ID:            m.ID,
+			Title:         m.Title,
+			Year:          m.Year,
+			Type:          m.Type,
+			Genre:         m.Genre,
+			GenreList:     genres,
+			Director:      m.Director,
+			CastList:      m.CastList,
+			Description:   m.Description,
+			Tagline:       m.Tagline,
+			TmdbRating:    m.TmdbRating,
+			ImdbRating:    m.ImdbRating,
+			Runtime:       m.Runtime,
+			ThumbnailPath: m.ThumbnailPath,
+		})
+	}
+
+	data := htmlReportData{
+		ScannedFolder: "Library",
+		ScannedAt:     "Live",
+		TotalFiles:    len(items),
+		Movies:        movies,
+		TVShows:       tv,
+		Port:          port,
+		Items:         reportItems,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.Execute(w, data)
+}
