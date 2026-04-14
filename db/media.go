@@ -171,6 +171,31 @@ func (d *DB) CountMedia(mediaType string) (int, error) {
 	return count, err
 }
 
+// ListAllMedia returns all media records that have a file path.
+func (d *DB) ListAllMedia() ([]Media, error) {
+	rows, err := d.Query(`SELECT `+mediaColumns+`
+		FROM media WHERE original_file_path != ''
+		ORDER BY clean_title ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanMediaRows(rows)
+}
+
+// GetMediaWithMissingData returns entries that have empty genre, zero rating, or empty description.
+func (d *DB) GetMediaWithMissingData() ([]Media, error) {
+	rows, err := d.Query(`SELECT `+mediaColumns+`
+		FROM media WHERE original_file_path != ''
+		AND (COALESCE(genre, '') = '' OR COALESCE(tmdb_rating, 0) = 0 OR COALESCE(description, '') = '')
+		ORDER BY clean_title ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanMediaRows(rows)
+}
+
 // GetMediaByScanDir returns all media whose original_file_path starts with the given directory prefix.
 func (d *DB) GetMediaByScanDir(scanDir string) ([]Media, error) {
 	prefix := scanDir
