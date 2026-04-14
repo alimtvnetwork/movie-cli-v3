@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -15,6 +17,7 @@ import (
 )
 
 var restPort int
+var restOpen bool
 
 var movieRestCmd = &cobra.Command{
 	Use:   "rest",
@@ -34,13 +37,16 @@ Endpoints:
 
 Examples:
   movie rest              Start on port 8086
-  movie rest --port 9000  Start on port 9000`,
+  movie rest --port 9000  Start on port 9000
+  movie rest --open       Start and open report in browser`,
 	Run: runMovieRest,
 }
 
 func init() {
 	movieRestCmd.Flags().IntVarP(&restPort, "port", "p", 8086,
 		"port to listen on")
+	movieRestCmd.Flags().BoolVar(&restOpen, "open", false,
+		"open the HTML report in the default browser")
 }
 
 func runMovieRest(cmd *cobra.Command, args []string) {
@@ -63,7 +69,8 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	}))
 
 	addr := fmt.Sprintf(":%d", restPort)
-	fmt.Printf("\n🚀 Movie CLI REST server running on http://localhost:%d\n", restPort)
+	url := fmt.Sprintf("http://localhost:%d", restPort)
+	fmt.Printf("\n🚀 Movie CLI REST server running on %s\n", url)
 	fmt.Println("   Press Ctrl+C to stop\n")
 	fmt.Printf("   Endpoints:\n")
 	fmt.Printf("     GET    /api/media\n")
@@ -72,8 +79,28 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("     PATCH  /api/media/{id}\n")
 	fmt.Printf("     GET    /api/stats\n\n")
 
+	if restOpen {
+		go openBrowser(url)
+	}
+
 	if srvErr := http.ListenAndServe(addr, mux); srvErr != nil {
 		fmt.Fprintf(os.Stderr, "❌ Server error: %v\n", srvErr)
+	}
+}
+
+// openBrowser opens the given URL in the default browser.
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not open browser: %v\n", err)
 	}
 }
 

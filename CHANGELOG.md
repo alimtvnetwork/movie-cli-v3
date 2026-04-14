@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.23.0
+
+### Added
+- **`movie rest --open`** — automatically opens the HTML report in the default browser when the REST server starts; supports macOS (`open`), Windows (`rundll32`), and Linux (`xdg-open`)
+
 ## v1.22.0
 
 ### Added
