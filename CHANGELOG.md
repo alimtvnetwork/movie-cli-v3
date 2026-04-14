@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.26.0
+
+### Added
+- **`GET /` on REST server** — serves a live HTML library report rendered from the database; always up-to-date, no need to open a static file
+
 ## v1.25.0
 
 ### Added
