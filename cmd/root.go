@@ -73,6 +73,7 @@ func init() {
 		movieDuplicatesCmd,
 		movieCleanupCmd,
 		movieWatchCmd,
+		movieHistoryCmd,
 	)
 }
 
