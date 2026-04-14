@@ -13,6 +13,7 @@ Error spec flattened: spec/02-error-manage-spec/ (no nested subfolder).
 cmd/ has 21 files, db/ has 6 files (including tags.go).
 CI pipeline follows gitmap-v2 patterns: SHA dedup, parallel matrix, vulncheck, cross-compile.
 Data folder at `<binary-dir>/data/`, resolved via os.Executable(). NOT cwd-relative.
+NEVER name a file `<package>/<package>.go` (e.g. db/db.go). Use descriptive names (db/open.go).
 
 ## Memories
 - [Project overview](mem://01-project-overview) — Go CLI, command tree (21 cmds), architecture, file structure
