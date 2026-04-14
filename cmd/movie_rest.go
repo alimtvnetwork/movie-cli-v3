@@ -29,11 +29,17 @@ communicate with this server for interactive features.
 Default port: 8086. Override with --port.
 
 Endpoints:
-  GET    /api/media        List all media
-  GET    /api/media/{id}   Get a single media item
-  DELETE /api/media/{id}   Remove a media item
-  PATCH  /api/media/{id}   Update media fields (JSON body)
-  GET    /api/stats        Library statistics
+  GET    /api/media              List all media
+  GET    /api/media/{id}         Get a single media item
+  DELETE /api/media/{id}         Remove a media item
+  PATCH  /api/media/{id}         Update media fields (JSON body)
+  GET    /api/media/{id}/similar TMDb recommendations
+  PATCH  /api/media/{id}/watched Mark as watched
+  GET    /api/tags               All tags with counts
+  GET    /api/tags?media_id=N    Tags for a specific item
+  POST   /api/tags               Add a tag (JSON: media_id, tag)
+  DELETE /api/tags               Remove a tag (JSON: media_id, tag)
+  GET    /api/stats              Library statistics
 
 Examples:
   movie rest              Start on port 8086
