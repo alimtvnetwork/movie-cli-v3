@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.28.0
+
+### Added
+- **Centralized error logging system** (`errlog/logger.go`) — all errors are now logged to:
+  - `.movie-output/logs/error.txt` (file-based, append-only, with timestamp/source/stack trace)
+  - `error_logs` DB table (queryable, with level/source/function/command/workdir/stack trace)
+- **`error_logs` table** (`db/errorlog.go`) — new table with columns: timestamp, level (ERROR/WARN/INFO), source, function, command, work_dir, message, stack_trace; includes `RecentErrorLogs()` query
+- **`errlog` package** — `Error()`, `Warn()`, `Info()` functions with automatic caller detection, stack trace capture (errors only), and dual output (file + DB)
+- **DB writer injection** — `errlog.SetDBWriter()` allows wiring DB logging without circular imports
+
+### Changed
+- **`movie scan` errors** — DB search, stat, insert, update, JSON write, TMDb, and thumbnail errors now use `errlog` instead of raw `fmt.Fprintf(os.Stderr)`
+- **`movie rest` errors** — JSON encode, template render, watchlist update, tag add, config read errors now use `errlog`
+- **Error entries include**: timestamp, severity, source file:line, function name, CLI command, working directory, message, and full Go stack trace
+
 ## v1.27.0
 
 ### Changed
