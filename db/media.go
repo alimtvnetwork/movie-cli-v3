@@ -47,6 +47,30 @@ type Media struct {
 	Runtime          int
 }
 
+// UpdateMediaByID updates an existing record by its primary key ID.
+func (d *DB) UpdateMediaByID(m *Media) error {
+	var tmdbID interface{}
+	if m.TmdbID > 0 {
+		tmdbID = m.TmdbID
+	}
+	_, err := d.Exec(`
+		UPDATE media SET title=?, clean_title=?, year=?, type=?, tmdb_id=?, imdb_id=?,
+			description=?, imdb_rating=?, tmdb_rating=?, popularity=?, genre=?,
+			director=?, cast_list=?, thumbnail_path=?, current_file_path=?,
+			file_extension=?, file_size=?,
+			runtime=?, language=?, budget=?, revenue=?, trailer_url=?, tagline=?,
+			updated_at=CURRENT_TIMESTAMP
+		WHERE id=?`,
+		m.Title, m.CleanTitle, m.Year, m.Type, tmdbID, m.ImdbID,
+		m.Description, m.ImdbRating, m.TmdbRating, m.Popularity, m.Genre,
+		m.Director, m.CastList, m.ThumbnailPath, m.CurrentFilePath,
+		m.FileExtension, m.FileSize,
+		m.Runtime, m.Language, m.Budget, m.Revenue, m.TrailerURL, m.Tagline,
+		m.ID,
+	)
+	return err
+}
+
 // InsertMedia inserts a new media record and returns the ID.
 func (d *DB) InsertMedia(m *Media) (int64, error) {
 	var tmdbID interface{}
@@ -145,6 +169,31 @@ func (d *DB) CountMedia(mediaType string) (int, error) {
 		err = d.QueryRow("SELECT COUNT(*) FROM media WHERE type = ? AND original_file_path != ''", mediaType).Scan(&count)
 	}
 	return count, err
+}
+
+// ListAllMedia returns all media records that have a file path.
+func (d *DB) ListAllMedia() ([]Media, error) {
+	rows, err := d.Query(`SELECT `+mediaColumns+`
+		FROM media WHERE original_file_path != ''
+		ORDER BY clean_title ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanMediaRows(rows)
+}
+
+// GetMediaWithMissingData returns entries that have empty genre, zero rating, or empty description.
+func (d *DB) GetMediaWithMissingData() ([]Media, error) {
+	rows, err := d.Query(`SELECT `+mediaColumns+`
+		FROM media WHERE original_file_path != ''
+		AND (COALESCE(genre, '') = '' OR COALESCE(tmdb_rating, 0) = 0 OR COALESCE(description, '') = '')
+		ORDER BY clean_title ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanMediaRows(rows)
 }
 
 // GetMediaByScanDir returns all media whose original_file_path starts with the given directory prefix.
