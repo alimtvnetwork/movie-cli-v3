@@ -157,7 +157,7 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 			slug += "-" + strconv.Itoa(m.Year)
 		}
 		thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
-		thumbDir := filepath.Join(m.OutputDir, "thumbnails")
+		thumbDir := filepath.Join(outputDir, "thumbnails")
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 			errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
 		}
