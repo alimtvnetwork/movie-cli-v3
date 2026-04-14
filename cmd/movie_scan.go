@@ -47,7 +47,9 @@ Examples:
   movie scan --format table       Show results as a formatted table
   movie scan --format json        Output results as JSON to stdout
   movie scan --rest               Scan and start REST server + open browser
-  movie scan --rest --port 9000   Scan and start REST on custom port`,
+  movie scan --rest --port 9000   Scan and start REST on custom port
+  movie scan --watch              Scan then watch for new files
+  movie scan --watch --interval 5 Watch with 5-second polling`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -65,6 +67,10 @@ func init() {
 		"start REST server and open HTML report in browser after scan")
 	movieScanCmd.Flags().IntVar(&scanRestPort, "port", 8086,
 		"port for REST server when using --rest")
+	movieScanCmd.Flags().BoolVarP(&scanWatch, "watch", "w", false,
+		"watch for new files after initial scan")
+	movieScanCmd.Flags().IntVar(&scanWatchInterval, "interval", 10,
+		"polling interval in seconds for --watch mode")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
@@ -163,7 +169,17 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		restPort = scanRestPort
 		fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
 		go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
+		if scanWatch {
+			// Run watch in background, REST in foreground
+			go runWatchLoop(scanDir, outputDir, database, creds)
+		}
 		runMovieRest(cmd, []string{})
+		return
+	}
+
+	// Start watch mode if --watch was specified (without --rest)
+	if scanWatch && !scanDryRun {
+		runWatchLoop(scanDir, outputDir, database, creds)
 	}
 }
 
