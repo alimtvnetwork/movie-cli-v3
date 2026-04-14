@@ -18,6 +18,8 @@ var scanRecursive bool
 var scanDepth int
 var scanDryRun bool
 var scanFormat string
+var scanRest bool
+var scanRestPort int
 
 var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
@@ -57,6 +59,10 @@ func init() {
 		"preview what would be scanned without writing to DB or .movie-output")
 	movieScanCmd.Flags().StringVar(&scanFormat, "format", "default",
 		"output format: default, table, or json")
+	movieScanCmd.Flags().BoolVar(&scanRest, "rest", false,
+		"start REST server and open HTML report in browser after scan")
+	movieScanCmd.Flags().IntVar(&scanRestPort, "port", 8086,
+		"port for REST server when using --rest")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
@@ -148,6 +154,14 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanJSON(scanDir, jsonItems, totalFiles, movieCount, tvCount, skipped)
 	} else {
 		printScanFooter(scanDir, outputDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
+	}
+
+	// Start REST server if --rest was specified
+	if scanRest && !scanDryRun {
+		restPort = scanRestPort
+		fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
+		go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
+		runMovieRest(cmd, []string{})
 	}
 }
 
