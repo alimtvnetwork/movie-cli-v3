@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,6 +46,7 @@ func processVideoFile(
 	// Check if already in DB by path
 	existing, searchErr := database.SearchMedia(result.CleanTitle)
 	if searchErr != nil {
+		// Per spec §2: DB errors get actionable messages
 		errlog.Warn("DB search error for '%s': %v", result.CleanTitle, searchErr)
 	}
 	for i := range existing {
@@ -71,7 +73,15 @@ func processVideoFile(
 
 	fi, fiErr := os.Stat(vf.FullPath)
 	if fiErr != nil {
-		errlog.Error("cannot stat file %s: %v", vf.FullPath, fiErr)
+		if os.IsNotExist(fiErr) {
+			// Per spec §3.1: File not found
+			errlog.Error("❌ File not found: %s", vf.FullPath)
+		} else if os.IsPermission(fiErr) {
+			// Per spec §3.2: Permission denied
+			errlog.Error("❌ Permission denied: %s", vf.FullPath)
+		} else {
+			errlog.Error("cannot stat file %s: %v", vf.FullPath, fiErr)
+		}
 		return false
 	}
 
@@ -128,6 +138,7 @@ func processVideoFile(
 }
 
 // enrichFromTMDb fetches metadata, details, and thumbnail from TMDb.
+// Handles errors per spec/02-error-manage-spec/04-runtime-error-handling.md.
 func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result, outputDir string) {
 	// Build search query — strip trailing year from clean title to avoid duplication
 	// e.g. cleaner may produce "The Housemaid 2025" with Year=2025
@@ -145,8 +156,28 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 	}
 
 	tmdbResults, tmdbErr := client.SearchMulti(searchQuery)
-	if tmdbErr != nil || len(tmdbResults) == 0 {
-		errlog.Warn("no TMDb match for '%s': %v", searchQuery, tmdbErr)
+	if tmdbErr != nil {
+		// Classify error per spec §1 and §4
+		switch {
+		case errors.Is(tmdbErr, tmdb.ErrAuthInvalid):
+			errlog.Error("❌ TMDb API key is invalid. Run: movie config set tmdb_api_key YOUR_KEY")
+		case errors.Is(tmdbErr, tmdb.ErrRateLimited):
+			errlog.Warn("TMDb rate limit exceeded — try again in a few seconds")
+		case errors.Is(tmdbErr, tmdb.ErrServerError):
+			errlog.Warn("⚠️ TMDb is temporarily unavailable. Try again later.")
+		case errors.Is(tmdbErr, tmdb.ErrTimeout):
+			errlog.Warn("⚠️ TMDb request timed out. Check your internet connection.")
+		case errors.Is(tmdbErr, tmdb.ErrNetworkError):
+			// Per spec §4: Offline mode — scan continues with local data only
+			errlog.Warn("⚠️ Network unavailable — scanning with local data only for '%s'", searchQuery)
+		default:
+			errlog.Warn("TMDb search failed for '%s': %v", searchQuery, tmdbErr)
+		}
+		return
+	}
+
+	if len(tmdbResults) == 0 {
+		errlog.Warn("no TMDb match for '%s' — inserted with local data only", searchQuery)
 		return
 	}
 
@@ -177,11 +208,21 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		// Primary: .movie-output/thumbnails/
 		thumbDir := filepath.Join(outputDir, "thumbnails")
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
+			if os.IsPermission(mkdirErr) {
+				errlog.Warn("⚠️ Cannot create thumbnail dir — skipping poster download")
+			} else {
+				errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
+			}
+			return
 		}
 		thumbPath := filepath.Join(thumbDir, thumbFileName)
 		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
-			errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
+			// Per spec §1.4: Poster timeout → skip poster, continue with metadata
+			if errors.Is(dlErr, tmdb.ErrTimeout) || errors.Is(dlErr, tmdb.ErrNetworkError) {
+				errlog.Warn("⚠️ Poster download timed out — skipping for '%s'", m.CleanTitle)
+			} else {
+				errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
+			}
 		} else {
 			m.ThumbnailPath = "thumbnails/" + thumbFileName
 			fmt.Println("     🖼️  Thumbnail saved")

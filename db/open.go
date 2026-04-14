@@ -67,6 +67,12 @@ func Open() (*DB, error) {
 		return nil, fmt.Errorf("cannot set WAL mode: %w", err)
 	}
 
+	// Set busy timeout per spec §2.1 — wait up to 5s for locked DB
+	if _, err := conn.Exec("PRAGMA busy_timeout = 5000"); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("cannot set busy_timeout: %w", err)
+	}
+
 	d := &DB{DB: conn, BasePath: base}
 	if err := d.migrate(); err != nil {
 		conn.Close()

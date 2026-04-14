@@ -3,8 +3,10 @@ package tmdb
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,6 +16,16 @@ import (
 
 const baseURL = "https://api.themoviedb.org/3"
 const imageBaseURL = "https://image.tmdb.org/t/p/w500"
+
+// Sentinel errors for callers to classify TMDb failures.
+var (
+	ErrAuthInvalid   = errors.New("TMDb API key is invalid")
+	ErrAuthMissing   = errors.New("no TMDb API key configured")
+	ErrRateLimited   = errors.New("TMDb rate limit exceeded")
+	ErrServerError   = errors.New("TMDb is temporarily unavailable")
+	ErrNetworkError  = errors.New("network error reaching TMDb")
+	ErrTimeout       = errors.New("TMDb request timed out")
+)
 
 // Client interacts with the TMDb API.
 type Client struct {
@@ -42,6 +54,11 @@ func NewClientWithToken(apiKey, accessToken string) *Client {
 			Timeout: 15 * time.Second,
 		},
 	}
+}
+
+// HasAuth returns true if the client has either an API key or access token.
+func (c *Client) HasAuth() bool {
+	return c.APIKey != "" || c.AccessToken != ""
 }
 
 // SearchResult holds a search result from TMDb.
@@ -233,6 +250,9 @@ func (c *Client) DownloadPoster(posterPath, dst string) error {
 	imgURL := imageBaseURL + posterPath
 	resp, err := c.HTTPClient.Get(imgURL)
 	if err != nil {
+		if IsNetworkError(err) {
+			return fmt.Errorf("%w: %v", ErrNetworkError, err)
+		}
 		return err
 	}
 	defer resp.Body.Close()
@@ -338,6 +358,35 @@ func (c *Client) buildURL(path string, params url.Values) string {
 // MaxRetries is the number of retry attempts for rate-limited requests.
 const MaxRetries = 3
 
+// IsNetworkError returns true if the error is a network-level failure (DNS, connection, timeout).
+func IsNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return true
+	}
+	// Check for common network error strings as fallback
+	msg := err.Error()
+	return strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no such host") ||
+		strings.Contains(msg, "network is unreachable")
+}
+
+// IsTimeoutError returns true if the error is specifically a timeout.
+func IsTimeoutError(err error) bool {
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	return false
+}
+
 func (c *Client) get(reqURL string, target interface{}) error {
 	var lastErr error
 	for attempt := 0; attempt <= MaxRetries; attempt++ {
@@ -354,19 +403,51 @@ func (c *Client) get(reqURL string, target interface{}) error {
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
+			// Classify network errors per spec §1.4 and §4
+			if IsTimeoutError(err) {
+				return fmt.Errorf("%w: check your internet connection", ErrTimeout)
+			}
+			if IsNetworkError(err) {
+				return fmt.Errorf("%w: %v", ErrNetworkError, err)
+			}
 			lastErr = fmt.Errorf("HTTP request failed: %w", err)
 			backoff(attempt)
 			continue
 		}
 
-		if resp.StatusCode == 429 {
+		// Handle specific HTTP status codes per spec
+		switch {
+		case resp.StatusCode == 401:
 			resp.Body.Close()
-			lastErr = fmt.Errorf("TMDb rate limit (429)")
-			backoff(attempt)
-			continue
-		}
+			return fmt.Errorf("%w. Run: movie config set tmdb_api_key YOUR_KEY", ErrAuthInvalid)
 
-		if resp.StatusCode != 200 {
+		case resp.StatusCode == 429:
+			// Rate limit — retry per spec §1.1
+			resp.Body.Close()
+			lastErr = ErrRateLimited
+			retryAfter := resp.Header.Get("Retry-After")
+			delay := 2 * time.Second
+			if secs, parseErr := time.ParseDuration(retryAfter + "s"); parseErr == nil && secs > 0 {
+				delay = secs
+			}
+			time.Sleep(delay)
+			continue
+
+		case resp.StatusCode >= 500:
+			// Server errors — retry once per spec §1.3
+			resp.Body.Close()
+			lastErr = fmt.Errorf("%w (HTTP %d)", ErrServerError, resp.StatusCode)
+			if attempt == 0 {
+				delay := 3 * time.Second
+				if resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504 {
+					delay = 5 * time.Second
+				}
+				time.Sleep(delay)
+				continue
+			}
+			return lastErr
+
+		case resp.StatusCode != 200:
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			return fmt.Errorf("TMDb API error %d: %s", resp.StatusCode, string(body))
