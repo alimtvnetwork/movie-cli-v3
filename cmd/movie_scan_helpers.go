@@ -58,23 +58,30 @@ func createOutputDirs(outputDir string) error {
 	return nil
 }
 
-// printScanHeader prints the scan mode banner.
+// printScanHeader prints the scan mode banner (gitmap-style box).
 func printScanHeader(scanDir, outputDir string) {
-	fmt.Printf("🔍 Scanning: %s\n", scanDir)
+	fmt.Println()
+	fmt.Println("  ╔══════════════════════════════════════╗")
+	fmt.Println("  ║         🎬  Movie CLI Scanner        ║")
+	fmt.Println("  ╚══════════════════════════════════════╝")
+	fmt.Println()
+	fmt.Printf("  📂 Scanning: %s\n", scanDir)
 	if scanDryRun {
-		fmt.Println("🧪 Mode: dry run (no writes)")
+		fmt.Println("  🧪 Mode: dry run (no writes)")
 	}
 	if scanRecursive {
 		if scanDepth > 0 {
-			fmt.Printf("🔄 Mode: recursive (max depth: %d)\n", scanDepth)
+			fmt.Printf("  🔄 Mode: recursive (max depth: %d)\n", scanDepth)
 		} else {
-			fmt.Println("🔄 Mode: recursive (all subdirectories)")
+			fmt.Println("  🔄 Mode: recursive (all subdirectories)")
 		}
 	}
 	if !scanDryRun {
-		fmt.Printf("📁 Output:   %s\n", outputDir)
+		fmt.Printf("  📁 Output: %s\n", outputDir)
 	}
 	fmt.Println()
+	fmt.Println("  ■ Scanned Items")
+	fmt.Println("  ──────────────────────────────────────────")
 }
 
 // printScanFooter prints the summary after scanning completes.
