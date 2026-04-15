@@ -79,6 +79,7 @@ func init() {
 		movieLogsCmd,
 		movieCdCmd,
 		movieRescanCmd,
+		moviePopoutCmd,
 	)
 }
 
