@@ -57,7 +57,7 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 
 		for _, vf := range newFiles {
 			processVideoFile(vf, database, client, useTMDb, outputDir,
-				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems, false)
+				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems, false, "")
 		}
 
 		// Log watch cycle

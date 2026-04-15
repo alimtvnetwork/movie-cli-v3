@@ -127,6 +127,9 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	useTable := scanFormat == "table"
 	useTMDb := creds.HasAuth()
 
+	// Generate batch ID for action_history tracking
+	scanBatchID := generateBatchID()
+
 	if useTable {
 		printScanTableHeader()
 	}
@@ -142,12 +145,25 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			diskPaths[vf.FullPath] = true
 		}
 		var removeIDs []int64
+		var removeMedia []*db.Media
 		for i := range existingMedia {
 			if !diskPaths[existingMedia[i].OriginalFilePath] {
 				removeIDs = append(removeIDs, existingMedia[i].ID)
+				removeMedia = append(removeMedia, &existingMedia[i])
 			}
 		}
 		if len(removeIDs) > 0 {
+			// Snapshot each removed entry before deletion for undo support
+			for _, rm := range removeMedia {
+				snapshot, snapErr := db.MediaToJSON(rm)
+				if snapErr != nil {
+					errlog.Warn("Could not snapshot media %d for undo: %v", rm.ID, snapErr)
+					continue
+				}
+				detail := fmt.Sprintf("Scan removed: %s (%s)", rm.CleanTitle, rm.OriginalFilePath)
+				database.InsertActionSimple(db.ActionScanRemove, rm.ID, snapshot, detail, scanBatchID)
+			}
+
 			delCount, delErr := database.DeleteMediaByIDs(removeIDs)
 			if delErr != nil {
 				errlog.Warn("Could not remove %d stale entries: %v", len(removeIDs), delErr)
@@ -173,8 +189,12 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 				totalFiles++
 				status := "existing"
 				if useTMDb && mediaNeedsRescan(em) {
+					// Snapshot before rescan for undo
+					preSnapshot, _ := db.MediaToJSON(em)
 					if rescanMediaEntry(database, client, em) {
 						status = "rescanned"
+						detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
+						database.InsertActionSimple(db.ActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
 						if !useTable && !useJSON {
 							typeIcon := "🎬"
 							if em.Type == "tv" {
@@ -225,7 +245,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			}
 			processVideoFile(vf, database, client, useTMDb, outputDir,
 				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
-				useTable || useJSON)
+				useTable || useJSON, scanBatchID)
 		}
 		if useJSON {
 			for i := range scannedItems {
