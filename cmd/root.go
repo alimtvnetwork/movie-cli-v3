@@ -31,6 +31,7 @@ Management:
   movie move                                Move files interactively
   movie rename                              Batch-rename messy filenames
   movie undo                                Undo last move/rename
+  movie redo                                Re-apply last undone operation
   movie popout                              Extract nested videos to root
   movie play 1                              Play with default player
 
