@@ -499,6 +499,3 @@ func printActionUndo(a *db.ActionRecord) {
 		fmt.Printf("   Batch: %s\n", a.BatchID[:8])
 	}
 }
-
-// ensure sql import is used
-var _ = sql.NullInt64{}
