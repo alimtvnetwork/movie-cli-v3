@@ -437,7 +437,7 @@ function Build-Binary {
         $buildDate = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
 
         $sourceVersion = "dev"
-        $versionFile = Join-Path $RepoRoot "version" "version.go"
+        $versionFile = Join-Path (Join-Path $RepoRoot "version") "version.go"
         if (Test-Path $versionFile) {
             $versionMatch = Select-String -Path $versionFile -Pattern 'Version\s*=\s*"([^"]+)"' -AllMatches
             if ($versionMatch -and $versionMatch.Matches.Count -gt 0) {
@@ -688,7 +688,7 @@ function Invoke-Tests {
 
     Push-Location $RepoRoot
     try {
-        $reportDir = Join-Path $RepoRoot "data" "unit-test-reports"
+        $reportDir = Join-Path (Join-Path $RepoRoot "data") "unit-test-reports"
         if (-not (Test-Path $reportDir)) {
             New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
         }
