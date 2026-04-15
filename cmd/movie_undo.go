@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"bufio"
-	"database/sql"
 	"fmt"
 	"os"
 	"strings"
