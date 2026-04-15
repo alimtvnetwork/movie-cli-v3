@@ -1,60 +1,78 @@
-// movie_history_table.go — table-formatted output for movie history
+// movie_history_table.go — table-formatted output for unified history
 package cmd
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
-func printHistoryTable(records []db.MoveRecord) {
-	idW := 5
+func printHistoryTableUnified(records []unifiedRecord) {
+	idW := 6
+	typeW := 14
 	statusW := 6
 	dateW := 19
-	fromW := 30
-	toW := 30
+	detailW := 40
 
 	fmt.Println()
 	fmt.Printf("  %-*s │ %-*s │ %-*s │ %-*s │ %-*s\n",
 		idW, "ID",
+		typeW, "Type",
 		statusW, "Status",
 		dateW, "Date",
-		fromW, "Original Name",
-		toW, "New Name")
+		detailW, "Detail")
 
 	fmt.Printf("  %s─┼─%s─┼─%s─┼─%s─┼─%s\n",
 		strings.Repeat("─", idW),
+		strings.Repeat("─", typeW),
 		strings.Repeat("─", statusW),
 		strings.Repeat("─", dateW),
-		strings.Repeat("─", fromW),
-		strings.Repeat("─", toW))
+		strings.Repeat("─", detailW))
 
-	for i := range records {
-		r := &records[i]
+	for _, r := range records {
 		status := "OK"
 		if r.Undone {
 			status = "Undone"
 		}
 
-		origName := truncate(r.OriginalFileName, fromW)
-		newName := truncate(r.NewFileName, toW)
-		date := truncate(r.MovedAt, dateW)
+		prefix := r.Source[0:1] // "m" or "a"
+		idStr := fmt.Sprintf("%s-%d", prefix, r.ID)
 
-		fmt.Printf("  %-*d │ %-*s │ %-*s │ %-*s │ %-*s\n",
-			idW, r.ID,
+		fmt.Printf("  %-*s │ %-*s │ %-*s │ %-*s │ %-*s\n",
+			idW, idStr,
+			typeW, truncate(r.Type, typeW),
 			statusW, status,
-			dateW, date,
-			fromW, origName,
-			toW, newName)
+			dateW, truncate(r.Timestamp, dateW),
+			detailW, truncate(r.Detail, detailW))
 	}
 
 	fmt.Printf("  %s─┴─%s─┴─%s─┴─%s─┴─%s\n",
 		strings.Repeat("─", idW),
+		strings.Repeat("─", typeW),
 		strings.Repeat("─", statusW),
 		strings.Repeat("─", dateW),
-		strings.Repeat("─", fromW),
-		strings.Repeat("─", toW))
+		strings.Repeat("─", detailW))
 
 	fmt.Printf("\n  Total: %d records\n\n", len(records))
+}
+
+// printHistoryTable is kept for backward compatibility (move-only table).
+func printHistoryTable(records []db.MoveRecord) {
+	var unified []unifiedRecord
+	for _, m := range records {
+		recType := "move"
+		if dirOf(m.FromPath) == dirOf(m.ToPath) {
+			recType = "rename"
+		}
+		unified = append(unified, unifiedRecord{
+			Source:    "move",
+			ID:        m.ID,
+			Type:      recType,
+			Detail:    fmt.Sprintf("%s → %s", m.OriginalFileName, m.NewFileName),
+			FromPath:  m.FromPath,
+			ToPath:    m.ToPath,
+			Timestamp: m.MovedAt,
+			Undone:    m.Undone,
+		})
+	}
+	printHistoryTableUnified(unified)
 }
