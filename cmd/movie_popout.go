@@ -63,6 +63,14 @@ type popoutItem struct {
 	subDir    string         // immediate subfolder name (for cleanup tracking)
 }
 
+// popoutFolderInfo holds info about a subfolder for the cleanup phase.
+type popoutFolderInfo struct {
+	name      string
+	path      string
+	files     []string
+	totalSize int64
+}
+
 func runMoviePopout(cmd *cobra.Command, args []string) {
 	database, openErr := db.Open()
 	if openErr != nil {
