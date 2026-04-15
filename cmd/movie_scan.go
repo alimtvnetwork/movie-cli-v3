@@ -195,6 +195,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 						status = "rescanned"
 						detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
 						database.InsertActionSimple(db.ActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
+						if !useTable && !useJSON {
 							typeIcon := "🎬"
 							if em.Type == "tv" {
 								typeIcon = "📺"
