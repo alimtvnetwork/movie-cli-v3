@@ -26,6 +26,7 @@ var (
 	historyFormat  string
 	historyType    string
 	historyBatch   string
+	historySince   string
 	historyLimit   int
 )
 
@@ -38,6 +39,7 @@ file moves, renames, scans, deletions, popouts, and metadata rescans.
 Flags:
   --type <type>   Filter: move, scan, delete, popout, rescan, all (default: all)
   --batch <id>    Show all actions in a specific batch
+  --since <date>  Show only records after this date (e.g. 2026-04-01)
   --limit <n>     Max records (default: 20)
   --format <fmt>  Output: default, json, table`,
 	Run: runMovieHistory,
@@ -47,6 +49,7 @@ func init() {
 	movieHistoryCmd.Flags().StringVar(&historyFormat, "format", "default", "output format: default, json, table")
 	movieHistoryCmd.Flags().StringVar(&historyType, "type", "all", "filter: move, scan, delete, popout, rescan, all")
 	movieHistoryCmd.Flags().StringVar(&historyBatch, "batch", "", "show actions for a specific batch ID")
+	movieHistoryCmd.Flags().StringVar(&historySince, "since", "", "show records after this date (e.g. 2026-04-01)")
 	movieHistoryCmd.Flags().IntVar(&historyLimit, "limit", 20, "max records to show")
 }
 
@@ -177,6 +180,17 @@ func collectUnifiedRecords(database *db.DB) []unifiedRecord {
 
 	// Sort by timestamp descending (newest first)
 	sortRecordsByTimestamp(records)
+
+	// Apply --since filter
+	if historySince != "" {
+		var filtered []unifiedRecord
+		for _, r := range records {
+			if r.Timestamp >= historySince {
+				filtered = append(filtered, r)
+			}
+		}
+		records = filtered
+	}
 
 	// Apply limit
 	if len(records) > historyLimit {
